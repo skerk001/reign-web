@@ -1,0 +1,78 @@
+.viz { min-height: calc(100vh - var(--nav-height)); background: #F4FAFF; }
+.viz-wrap { max-width: var(--max-width); margin: 0 auto; padding: 0 var(--pad) 60px; }
+
+.viz-header { padding: 32px 0 12px; border-bottom: 4px solid #08090A; }
+.viz-title { font-family: var(--font-display); font-size: 3rem; font-weight: 800; color: #08090A; letter-spacing: -1px; }
+.viz-desc { font-size: 1.05rem; color: #8789C0; margin-top: 6px; font-weight: 700; }
+
+/* ═══ Era Summary Cards ═══ */
+.era-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin: 24px 0; }
+.era-card {
+  background: #fff; border: 2px solid #e2eaf2; border-top: 5px solid; border-radius: 12px;
+  padding: 18px; display: flex; flex-direction: column; gap: 8px;
+}
+.ec-era { font-family: var(--font-display); font-size: 1.35rem; font-weight: 900; }
+.ec-years { font-size: 0.88rem; font-weight: 800; color: #8789C0; }
+.ec-desc { font-size: 0.82rem; font-weight: 700; color: #b0b4d0; font-style: italic; }
+.ec-best { margin-top: 6px; padding-top: 10px; border-top: 1px solid #e8ecf2; }
+.ec-best-label { font-size: 0.68rem; font-weight: 900; color: #8789C0; text-transform: uppercase; letter-spacing: 1.5px; }
+.ec-best-name { font-size: 1.05rem; font-weight: 900; color: #08090A; }
+.ec-best-reign { font-family: var(--font-mono); font-size: 1.6rem; font-weight: 900; color: #065f46; }
+.ec-meta { display: flex; justify-content: space-between; font-size: 0.82rem; font-weight: 800; color: #b0b4d0; margin-top: auto; padding-top: 8px; }
+
+/* ═══ Era Filter ═══ */
+.viz-era-filter { display: flex; gap: 6px; padding: 8px 0 24px; flex-wrap: wrap; align-items: center; }
+.viz-filter-label { font-size: 0.92rem; font-weight: 900; color: #8789C0; text-transform: uppercase; letter-spacing: 0.5px; margin-right: 8px; }
+.viz-era-btn {
+  padding: 10px 20px; border-radius: 8px; border: 2px solid #e2eaf2; background: #fff;
+  font-family: var(--font-body); font-size: 0.95rem; font-weight: 900; color: #8789C0;
+  cursor: pointer; transition: all 0.12s;
+}
+.viz-era-btn.on { background: #08090A; color: #5DFDCB; border-color: #08090A; }
+.viz-era-btn:hover:not(.on) { border-color: #5DFDCB; }
+
+/* ═══ Bento Grid ═══ */
+.bento { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.bento-item { min-width: 0; }
+.bento-wide { grid-column: 1 / -1; }
+
+/* ═══ Chart Cards ═══ */
+.vc { background: #fff; border: 2px solid #e2eaf2; border-radius: 14px; padding: 28px; height: 100%; }
+.vc-t { font-family: var(--font-display); font-size: 1.8rem; font-weight: 900; color: #08090A; margin-bottom: 4px; letter-spacing: -0.5px; }
+.vc-d { font-size: 1rem; color: #8789C0; font-weight: 700; margin-bottom: 18px; }
+.vc-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.vc-toggle { display: flex; gap: 4px; background: #f0f4f8; border-radius: 10px; padding: 4px; }
+.vc-btn {
+  padding: 10px 20px; border-radius: 8px; border: none; background: none;
+  font-family: var(--font-body); font-size: 0.95rem; font-weight: 900; color: #8789C0; cursor: pointer;
+}
+.vc-btn.on { background: #08090A; color: #5DFDCB; }
+
+/* Quadrant labels */
+.quad-labels { display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin-top: -6px; padding: 0 70px; }
+.ql { font-size: 0.88rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; padding: 6px 0; }
+.ql-tl { color: #2563EB; text-align: left; }
+.ql-tr { color: #065f46; text-align: right; }
+.ql-bl { color: #8789C0; text-align: left; }
+.ql-br { color: #D97706; text-align: right; }
+
+/* ═══ Tooltips ═══ */
+.vt { background: #08090A; border-radius: 10px; padding: 14px 18px; box-shadow: 0 6px 20px rgba(0,0,0,0.3); max-width: 340px; }
+.vt-n { font-size: 1.2rem; font-weight: 900; color: #5DFDCB; }
+.vt-s { font-family: var(--font-mono); font-size: 1rem; font-weight: 800; color: #ccc; margin-top: 6px; line-height: 1.6; }
+
+/* ═══ Recharts global overrides — BIGGER BOLDER ═══ */
+.recharts-legend-item-text { font-weight: 900 !important; font-size: 15px !important; }
+.recharts-cartesian-axis-tick-value { fill: #08090A !important; font-weight: 900 !important; font-size: 14px !important; }
+.recharts-label { font-weight: 900 !important; }
+
+@media (max-width: 900px) {
+  .viz-title { font-size: 2.2rem; }
+  .bento { grid-template-columns: 1fr; }
+  .era-cards { grid-template-columns: 1fr 1fr; }
+  .vc { padding: 18px; }
+  .vc-t { font-size: 1.4rem; }
+}
+@media (max-width: 600px) {
+  .era-cards { grid-template-columns: 1fr; }
+}

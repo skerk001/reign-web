@@ -1,0 +1,87 @@
+@import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;0,8..60,800;1,8..60,400&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap');
+
+:root {
+  /* Warm white palette */
+  --bg-page: #faf8f5;
+  --bg-white: #ffffff;
+  --bg-cream: #f5f2ed;
+  --bg-hover: #f0ece5;
+  --bg-active: #ebe6dc;
+  --bg-header: #2c2418;
+  --bg-nav: #1a1510;
+
+  /* Text */
+  --text-primary: #1a1a1a;
+  --text-secondary: #4a4a4a;
+  --text-tertiary: #7a7a7a;
+  --text-muted: #aaa8a4;
+  --text-inverse: #faf8f5;
+
+  /* REIGN Gold — deeper for legibility on white */
+  --reign-gold: #b8860b;
+  --reign-gold-dark: #8b6508;
+  --reign-gold-light: #d4a020;
+  --reign-gold-bg: rgba(184, 134, 11, 0.08);
+  --reign-gold-bg-strong: rgba(184, 134, 11, 0.14);
+
+  /* Offense (warm amber/orange) */
+  --off-color: #c2660a;
+  --off-light: #e07a10;
+  --off-bg: rgba(194, 102, 10, 0.07);
+
+  /* Defense (steel blue) */
+  --def-color: #2968a8;
+  --def-light: #3580cc;
+  --def-bg: rgba(41, 104, 168, 0.07);
+
+  /* Accents */
+  --positive: #1a8a4a;
+  --negative: #c03030;
+  --border: #e0dcd5;
+  --border-light: #ece8e0;
+  --border-dark: #ccc8c0;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+  --shadow-md: 0 2px 8px rgba(0,0,0,0.08);
+
+  /* Typography */
+  --font-display: 'Source Serif 4', Georgia, serif;
+  --font-body: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'IBM Plex Mono', 'SF Mono', monospace;
+
+  /* Layout */
+  --nav-height: 58px;
+  --max-width: 1360px;
+  --pad: 20px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg-page);
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+a { color: var(--reign-gold-dark); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+::selection { background: rgba(184, 134, 11, 0.2); }
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--bg-cream); }
+::-webkit-scrollbar-thumb { background: var(--border-dark); border-radius: 4px; }
+
+/* Tabular numbers for all data */
+.tnum { font-variant-numeric: tabular-nums; }
+
