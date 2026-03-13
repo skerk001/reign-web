@@ -22,16 +22,16 @@ Key contributions:
 
 | # | Player | Year | Peak REIGN |
 |---|--------|------|------------|
-| 1 | LeBron James | 2012 | +27.70 |
-| 2 | Michael Jordan | 1987 | +26.59 |
-| 3 | Stephen Curry | 2015 | +26.59 |
-| 4 | Shai Gilgeous-Alexander | 2024 | +24.72 |
-| 5 | Nikola Jokic | 2024 | +24.40 |
-| 6 | Chris Paul | 2008 | +24.18 |
-| 7 | Kevin Garnett | 2003 | +24.13 |
-| 8 | James Harden | 2018 | +24.06 |
-| 9 | David Robinson | 1993 | +23.88 |
-| 10 | Shaquille O'Neal | 1999 | +23.81 |
+| 1 | LeBron James | 2013 | +27.70 |
+| 2 | Michael Jordan | 1988 | +26.59 |
+| 3 | Stephen Curry | 2016 | +26.59 |
+| 4 | Shai Gilgeous-Alexander | 2025 | +24.72 |
+| 5 | Nikola Jokic | 2025 | +24.40 |
+| 6 | Chris Paul | 2009 | +24.18 |
+| 7 | Kevin Garnett | 2004 | +24.13 |
+| 8 | James Harden | 2019 | +24.06 |
+| 9 | David Robinson | 1994 | +23.88 |
+| 10 | Shaquille O'Neal | 2000 | +23.81 |
 
 ## How REIGN Works
 
