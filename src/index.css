@@ -103,3 +103,12 @@ a:hover { text-decoration: underline; }
 /* Tabular numbers for all data */
 .tnum { font-variant-numeric: tabular-nums; }
 
+/* ── Shared StatBloom styles (used on Players + Compare) ── */
+.bloom { display: flex; justify-content: center; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 20px 16px; }
+.bloom-svg { width: 100%; max-width: 480px; height: auto; overflow: visible; }
+.bloom-lbl { font-family: var(--font-body); font-size: 13px; font-weight: 800; fill: var(--ink); }
+.bloom-val { font-family: var(--font-mono); font-size: 15px; font-weight: 900; }
+.bloom-raw { font-family: var(--font-mono); font-size: 11px; font-weight: 700; fill: var(--muted); }
+.bloom-center-v { font-family: var(--font-mono); font-size: 22px; font-weight: 900; fill: var(--ink); }
+.bloom-center-l { font-size: 8px; font-weight: 800; fill: var(--faint); letter-spacing: 1px; }
+

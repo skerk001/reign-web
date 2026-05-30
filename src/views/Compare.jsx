@@ -2,6 +2,8 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { formatReign, seasonLabel } from '../utils/format';
 import { fuzzySearch } from '../utils/fuzzySearch';
 import { useJSON, useAllSeasons } from '../hooks/useData';
+import { PlayerCrest } from '../components/PlayerArt';
+import { StatBloom } from '../components/PlayerCharts';
 import Loading from '../components/Loading';
 import './Compare.css';
 
@@ -242,6 +244,13 @@ function StatTable({ players, seasons, allPlayerRanks, stretches3, stretches5, s
     return scores;
   }, [playerData, statGroups]);
 
+  const crestData = useMemo(() => playerData.map(d => {
+    const ps = seasons?.filter(r => r.name === d.name && r.type === seasonType) || [];
+    if (!ps.length) return null;
+    const pk = ps.reduce((a, b) => (b.reign > a.reign ? b : a));
+    return { team: pk.team, off: pk.reign_off, def: pk.reign_def, peak: pk.reign };
+  }), [playerData, seasons, seasonType]);
+
   return (
     <div>
       {/* Tally bar */}
@@ -261,11 +270,13 @@ function StatTable({ players, seasons, allPlayerRanks, stretches3, stretches5, s
         {/* Header */}
         <div className="cmp-hero-header">
           <div className="cmp-hero-col">
+            {crestData[0] && <PlayerCrest name={playerData[0].name} team={crestData[0].team} off={crestData[0].off} def={crestData[0].def} peak={crestData[0].peak} size={50} className="cmp-hero-crest" />}
             <div className="cmp-hero-player-name" style={{ color: PLAYER_COLORS_LIGHT[0] }}>{playerData[0].name}</div>
             <div className="cmp-hero-player-meta">{playerData[0].teams} · {playerData[0].years} · {playerData[0].n} {seasonType} szn</div>
           </div>
           <div className="cmp-hero-vs">VS</div>
           <div className="cmp-hero-col">
+            {crestData[1] && <PlayerCrest name={playerData[1].name} team={crestData[1].team} off={crestData[1].off} def={crestData[1].def} peak={crestData[1].peak} size={50} className="cmp-hero-crest" />}
             <div className="cmp-hero-player-name" style={{ color: PLAYER_COLORS_LIGHT[1] }}>{playerData[1].name}</div>
             <div className="cmp-hero-player-meta">{playerData[1].teams} · {playerData[1].years} · {playerData[1].n} {seasonType} szn</div>
           </div>
@@ -273,6 +284,7 @@ function StatTable({ players, seasons, allPlayerRanks, stretches3, stretches5, s
             <>
               <div className="cmp-hero-vs">VS</div>
               <div className="cmp-hero-col">
+                {crestData[2] && <PlayerCrest name={playerData[2].name} team={crestData[2].team} off={crestData[2].off} def={crestData[2].def} peak={crestData[2].peak} size={50} className="cmp-hero-crest" />}
                 <div className="cmp-hero-player-name" style={{ color: PLAYER_COLORS_LIGHT[2] }}>{playerData[2].name}</div>
                 <div className="cmp-hero-player-meta">{playerData[2].teams} · {playerData[2].years} · {playerData[2].n} {seasonType} szn</div>
               </div>
@@ -457,7 +469,7 @@ function TrajectoryChart({ players, seasons, seasonType, useOppAdj }) {
             <line x1={PAD.l} y1={y(v)} x2={W - PAD.r} y2={y(v)}
               stroke={v === 0 ? 'rgba(135,137,192,0.35)' : 'rgba(135,137,192,0.1)'}
               strokeWidth={v === 0 ? 1.5 : 1} strokeDasharray={v === 0 ? '5,4' : 'none'} />
-            <text x={PAD.l - 12} y={y(v) + 5} textAnchor="end" fill="#4a4d60" fontSize="15" fontWeight="900" fontFamily="var(--font-mono)">{v >= 0 ? '+' : ''}{v}</text>
+            <text x={PAD.l - 12} y={y(v) + 5} textAnchor="end" fill="#8789C0" fontSize="15" fontWeight="900" fontFamily="var(--font-mono)">{v >= 0 ? '+' : ''}{v}</text>
           </g>
         ))}
 
@@ -498,7 +510,7 @@ function TrajectoryChart({ players, seasons, seasonType, useOppAdj }) {
           const ts = (r.tsp || 0) <= 1 ? ((r.tsp || 0) * 100).toFixed(0) : (r.tsp || 0).toFixed(0);
           return (
             <g>
-              <rect x={tx - 165} y={ty} width="330" height="66" rx="10" fill="#08090A" opacity="0.97" />
+              <rect x={tx - 165} y={ty} width="330" height="66" rx="10" fill="#08090A" opacity="0.97" stroke="rgba(135,137,192,0.3)" />
               <text x={tx} y={ty + 25} textAnchor="middle" fill={PLAYER_COLORS_LIGHT[pi]} fontSize="20" fontWeight="900" fontFamily="var(--font-mono)">
                 {players[pi].split(' ').pop()} {seasonLabel(r.year)} — {formatReign(getR(r))}
               </text>
@@ -511,7 +523,7 @@ function TrajectoryChart({ players, seasons, seasonType, useOppAdj }) {
 
         {/* Year labels */}
         {allYears.filter((_, i) => i % Math.max(1, Math.floor(allYears.length / 14)) === 0 || i === allYears.length - 1).map(yr => (
-          <text key={yr} x={x(yr)} y={H - 10} textAnchor="middle" fill="#4a4d60" fontSize="15" fontWeight="900" fontFamily="var(--font-mono)">{"'" + String(yr + 1).slice(-2)}</text>
+          <text key={yr} x={x(yr)} y={H - 10} textAnchor="middle" fill="#8789C0" fontSize="15" fontWeight="900" fontFamily="var(--font-mono)">{"'" + String(yr + 1).slice(-2)}</text>
         ))}
       </svg>
       <div className="cmp-trajectory-legend">
@@ -619,67 +631,13 @@ function RadarOverlay({ players, seasons, seasonType, stretches3, stretches5, us
         </div>
       </div>
 
-      <svg viewBox={`0 0 ${SIZE} ${SIZE + 40}`} className="cmp-radar-svg">
-        {/* Grid */}
-        <polygon points={angles.map(a => { const p = point(a, 100); return `${p.x},${p.y}`; }).join(' ')} fill="rgba(135,137,192,0.04)" />
-        {rings.map(pct => (
-          <polygon key={pct} points={angles.map(a => { const p = point(a, pct); return `${p.x},${p.y}`; }).join(' ')}
-            fill="none" stroke={pct === 50 ? 'rgba(8,9,10,0.2)' : 'rgba(135,137,192,0.12)'}
-            strokeWidth={pct === 50 ? 1.5 : 1} strokeDasharray={pct === 50 ? '5,4' : 'none'} />
-        ))}
-        {[50, 75, 100].map(pct => (
-          <text key={pct} x={CX + 6} y={CY - R * pct / 100 + 16} fill="#8789C0" fontSize="13" fontWeight="900" fontFamily="var(--font-mono)">{pct}th</text>
-        ))}
-        {angles.map((a, i) => { const p = point(a, 100); return <line key={i} x1={CX} y1={CY} x2={p.x} y2={p.y} stroke="rgba(135,137,192,0.08)" strokeWidth="1" />; })}
-
-        {/* Player polygons */}
-        {playerRadars.map((pr, pi) => {
-          if (!pr) return null;
-          const polyPts = pr.cats.map((d, i) => { const p = point(angles[i], Math.max(d.value, 5)); return `${p.x},${p.y}`; }).join(' ');
-          const isHov = hovered === pi;
-          return (
-            <g key={pi} opacity={hovered === null || isHov ? 0.9 : 0.15} style={{ transition: 'opacity 0.2s' }}>
-              <polygon points={polyPts} fill={PLAYER_COLORS_LIGHT[pi]} fillOpacity="0.2" stroke={PLAYER_COLORS_LIGHT[pi]} strokeWidth={isHov ? 4.5 : 3.5} strokeLinejoin="round" />
-              {/* Dots at vertices */}
-              {pr.cats.map((d, i) => {
-                const p = point(angles[i], Math.max(d.value, 5));
-                return <circle key={i} cx={p.x} cy={p.y} r={isHov ? 6 : 4} fill={PLAYER_COLORS_LIGHT[pi]} stroke="#08090A" strokeWidth="2" />;
-              })}
-            </g>
-          );
-        })}
-
-        {/* Labels — bigger, bolder, darker, with more room */}
-        {playerRadars[0]?.cats.map((d, i) => {
-          const labelR = R + 75;
-          const lx = CX + Math.cos(angles[i]) * labelR;
-          const ly = CY + Math.sin(angles[i]) * labelR;
-          const isTop = Math.abs(angles[i] + Math.PI / 2) < 0.3;
-          const isBottom = Math.abs(angles[i] - Math.PI / 2) < 0.3;
-          const isLeft = angles[i] > Math.PI / 2 || angles[i] < -Math.PI / 2;
-          const anchor = isTop || isBottom ? 'middle' : isLeft ? 'end' : 'start';
-          return (
-            <g key={i}>
-              <text x={lx} y={ly - 12} textAnchor={anchor} fill="#08090A" fontSize="20" fontWeight="900" fontFamily="var(--font-body)">{d.label}</text>
-              {playerRadars.map((pr, pi) => (
-                <text key={pi} x={lx} y={ly + 10 + pi * 22} textAnchor={anchor}
-                  fill={PLAYER_COLORS_DARK[pi]} fontSize="16" fontWeight="900" fontFamily="var(--font-mono)">
-                  {pr.cats[i].value}th — {pr.cats[i].raw}
-                </text>
-              ))}
-            </g>
-          );
-        })}
-      </svg>
-
-      {/* Legend with hover */}
-      <div className="cmp-trajectory-legend">
-        {players.map((name, i) => (
-          <div className="cmp-legend-item" key={name}
-            onMouseEnter={() => setHovered(i)} onMouseLeave={() => setHovered(null)}
-            style={{ cursor: 'pointer', opacity: hovered === null || hovered === i ? 1 : 0.4, transition: 'opacity 0.15s' }}>
-            <div className="cmp-legend-dot" style={{ background: PLAYER_COLORS_LIGHT[i] }} />
-            {name} {playerRadars[i]?.windowLabel ? <span style={{color:'#8789C0',fontSize:'0.8em',marginLeft:4}}>({playerRadars[i].windowLabel})</span> : ''}
+      <div className="cmp-blooms">
+        {playerRadars.map((pr, pi) => (
+          <div className="cmp-bloom-col" key={pi}>
+            <div className="cmp-bloom-name" style={{ color: PLAYER_COLORS_LIGHT[pi] }}>
+              {players[pi]}<span className="cmp-bloom-win"> · {pr.windowLabel}</span>
+            </div>
+            <StatBloom data={pr.cats} accent={PLAYER_COLORS_LIGHT[pi]} />
           </div>
         ))}
       </div>

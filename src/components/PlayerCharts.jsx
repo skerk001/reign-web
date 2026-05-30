@@ -75,7 +75,7 @@ export function Constellation({ rs = [], po = [] }) {
 }
 
 /* ═══ Stat Bloom — skill profile as a radial flower ═══ */
-export function StatBloom({ data }) {
+export function StatBloom({ data, accent }) {
   const [hi, setHi] = useState(null);
   if (!data?.length) return null;
   const SIZE = 460, cx = SIZE / 2, cy = SIZE / 2, R = 150;
@@ -89,7 +89,7 @@ export function StatBloom({ data }) {
     const c1x = px + Math.cos(ang + 0.55) * wob, c1y = py + Math.sin(ang + 0.55) * wob;
     const c2x = px + Math.cos(ang - 0.55) * wob, c2y = py + Math.sin(ang - 0.55) * wob;
     const lx = cx + Math.cos(ang) * (len + 30), ly = cy + Math.sin(ang) * (len + 30);
-    const color = i % 2 ? MINT : GOLD;
+    const color = accent || (i % 2 ? MINT : GOLD);
     return { d, ang, color, i, lx, ly,
       path: `M${px.toFixed(1)} ${py.toFixed(1)} Q${c1x.toFixed(1)} ${c1y.toFixed(1)} ${tx.toFixed(1)} ${ty.toFixed(1)} Q${c2x.toFixed(1)} ${c2y.toFixed(1)} ${px.toFixed(1)} ${py.toFixed(1)} Z` };
   });
@@ -107,7 +107,7 @@ export function StatBloom({ data }) {
           </g>
         ))}
         <circle cx={cx} cy={cy} r="42" fill="#0d0f13" stroke="rgba(135,137,192,0.3)" strokeWidth="1.5" />
-        <text x={cx} y={cy - 4} textAnchor="middle" className="bloom-center-v">{Math.round(data.reduce((s, d) => s + d.value, 0) / data.length)}</text>
+        <text x={cx} y={cy - 4} textAnchor="middle" className="bloom-center-v" style={accent ? { fill: accent } : undefined}>{Math.round(data.reduce((s, d) => s + d.value, 0) / data.length)}</text>
         <text x={cx} y={cy + 13} textAnchor="middle" className="bloom-center-l">AVG %ILE</text>
         {petals.map(p => (
           <g key={`l${p.i}`} opacity={hi === null || hi === p.i ? 1 : 0.4} style={{ transition: 'opacity .14s' }}>

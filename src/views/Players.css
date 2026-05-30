@@ -124,15 +124,6 @@
 .prof-section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
 .prof-section-header .prof-section-title { margin-bottom: 0; }
 
-/* ═══ STAT BLOOM (skill profile) ═══ */
-.bloom { display: flex; justify-content: center; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 20px 16px; }
-.bloom-svg { width: 100%; max-width: 480px; height: auto; overflow: visible; }
-.bloom-lbl { font-family: var(--font-body); font-size: 13px; font-weight: 800; fill: var(--ink); }
-.bloom-val { font-family: var(--font-mono); font-size: 15px; font-weight: 900; }
-.bloom-raw { font-family: var(--font-mono); font-size: 11px; font-weight: 700; fill: var(--muted); }
-.bloom-center-v { font-family: var(--font-mono); font-size: 22px; font-weight: 900; fill: var(--ink); }
-.bloom-center-l { font-size: 8px; font-weight: 800; fill: var(--faint); letter-spacing: 1px; }
-
 /* ═══ CAREER CONSTELLATION ═══ */
 .pchart { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 18px 16px 14px; }
 .pchart-svg { width: 100%; height: auto; display: block; overflow: visible; }
