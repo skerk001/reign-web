@@ -5,7 +5,7 @@ import Rankings from './views/Rankings';
 import './index.css';
 
 // Lazy-load non-landing views so the initial bundle ships only Rankings + React.
-// recharts (Viz) and the large Compare/Players views load on demand per tab.
+// The large Compare/Players/Viz views load on demand per tab.
 const Players = lazy(() => import('./views/Players'));
 const Compare = lazy(() => import('./views/Compare'));
 const EraExplorer = lazy(() => import('./views/Eras'));

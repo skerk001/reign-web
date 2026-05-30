@@ -1,365 +1,247 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  BarChart, Bar, Cell, LineChart, Line, Legend, ReferenceLine, ReferenceArea } from 'recharts';
+import { useState, useRef, useMemo } from 'react';
 import Loading from '../components/Loading';
 import { formatReign } from '../utils/format';
-import { useJSON, useAllSeasons } from '../hooks/useData';
+import { useJSON } from '../hooks/useData';
 import './Viz.css';
 
 const EC = { Pioneer: '#8789C0', Legacy: '#D97706', Classic: '#2563EB', Modern: '#10B981' };
 const ERAS = ['Pioneer', 'Legacy', 'Classic', 'Modern'];
-const ERA_YEARS = { Pioneer: [1946,1962], Legacy: [1963,1995], Classic: [1996,2012], Modern: [2013,2026] };
 const ERA_DESC = { Pioneer: 'The birth of basketball', Legacy: 'The golden age of individual greatness', Classic: 'The dead-ball ISO era', Modern: 'Analytics & positionless basketball' };
+const MINT = '#5DFDCB', GOLD = '#F5B942';
+
+// Map a pointer event to viewBox coordinates for a scaled SVG.
+function vbPoint(e, vbW, vbH) {
+  const r = e.currentTarget.getBoundingClientRect();
+  return { x: ((e.clientX - r.left) / r.width) * vbW, y: ((e.clientY - r.top) / r.height) * vbH, px: e.clientX - r.left, py: e.clientY - r.top };
+}
+
+function Card({ title, desc, span = 'wide', children }) {
+  return (
+    <div className={`vcard ${span}`}>
+      <h2 className="vc-t">{title}</h2>
+      {desc && <p className="vc-d">{desc}</p>}
+      <div className="vc-body">{children}</div>
+    </div>
+  );
+}
+
+function Tip({ pos, children }) {
+  if (!pos) return null;
+  return <div className="vtip" style={{ left: pos.px + 14, top: pos.py + 14 }}>{children}</div>;
+}
 
 export default function Visualizations() {
-  const { data: seasons, loading } = useAllSeasons();
-  const { data: careerClutch } = useJSON('/data/career_clutch.json');
-  const [eraFilter, setEraFilter] = useState('All');
+  const { data: viz, loading } = useJSON('/data/viz.json');
   const [seasonType, setSeasonType] = useState('RS');
+  const [eraFilter, setEraFilter] = useState('All');
 
-  const filtered = useMemo(() => {
-    if (!seasons) return [];
-    let list = seasons.filter(r => r.type === seasonType && (r.min || 0) > 15);
-    if (eraFilter !== 'All') list = list.filter(r => r.era === eraFilter);
-    return list;
-  }, [seasons, eraFilter, seasonType]);
-
-  // Era summary stats — responds to seasonType
-  const eraCards = useMemo(() => {
-    if (!seasons) return [];
-    return ERAS.map(era => {
-      const erData = seasons.filter(r => r.type === seasonType && r.era === era && (r.min||0) > 15);
-      const best = [...erData].sort((a,b) => b.reign - a.reign)[0];
-      const tsVals = erData.map(r => r.tsp||0).filter(v => v > 0);
-      const avgTS = tsVals.length ? tsVals.reduce((a,b)=>a+b,0)/tsVals.length : 0;
-      return {
-        era, color: EC[era], years: ERA_YEARS[era], desc: ERA_DESC[era],
-        best: best ? { name: best.name, reign: best.reign, year: best.year } : null,
-        avgTS: (avgTS <= 1 ? avgTS * 100 : avgTS).toFixed(1),
-        players: new Set(erData.map(r=>r.name)).size,
-        seasons: erData.length,
-      };
-    });
-  }, [seasons, seasonType]);
-
-  if (loading || !seasons) return <Loading message="Loading visualization data..." />;
+  if (loading || !viz) return <Loading message="Loading visualizations..." />;
 
   return (
     <div className="viz">
       <div className="viz-wrap">
         <div className="viz-header">
           <h1 className="viz-title">Visualizations</h1>
-          <p className="viz-desc">Interactive analytics dashboard across 80 years of NBA history</p>
+          <p className="viz-desc">Eighty years of NBA impact, drawn from the ground up.</p>
         </div>
 
-        {/* Era Summary Cards */}
         <div className="era-cards">
-          {eraCards.map(c => (
-            <div key={c.era} className="era-card" style={{borderTopColor: c.color}}>
-              <div className="ec-era" style={{color: c.color}}>{c.era}</div>
+          {viz.eraCards[seasonType].map(c => (
+            <div key={c.era} className="era-card" style={{ '--ec': EC[c.era] }}>
+              <div className="ec-era">{c.era}</div>
               <div className="ec-years">{c.years[0]}–{c.years[1]}</div>
-              <div className="ec-desc">{c.desc}</div>
+              <div className="ec-desc">{ERA_DESC[c.era]}</div>
               {c.best && (
                 <div className="ec-best">
-                  <div className="ec-best-label">Best Season</div>
-                  <div className="ec-best-name">{c.best.name} '{String(c.best.year+1).slice(-2)}</div>
-                  <div className="ec-best-reign">{formatReign(c.best.reign)}</div>
+                  <span className="ec-best-label">Best Season</span>
+                  <span className="ec-best-name">{c.best.name} '{String(c.best.year + 1).slice(-2)}</span>
+                  <span className="ec-best-reign">{formatReign(c.best.reign)}</span>
                 </div>
               )}
-              <div className="ec-meta">
-                <span>{c.players} players</span>
-                <span>Avg TS: {c.avgTS}%</span>
-              </div>
+              <div className="ec-meta"><span>{c.players} players</span><span>Avg TS {c.avgTS}%</span></div>
             </div>
           ))}
         </div>
 
-        <div className="viz-era-filter">
-          <div className="vc-toggle" style={{marginRight: 12}}>
-            <button className={`vc-btn${seasonType==='RS'?' on':''}`} onClick={()=>setSeasonType('RS')}>Regular Season</button>
-            <button className={`vc-btn${seasonType==='PO'?' on':''}`} onClick={()=>setSeasonType('PO')}>Playoffs</button>
+        <div className="viz-controls">
+          <div className="vc-toggle">
+            <button className={`vc-btn${seasonType === 'RS' ? ' on' : ''}`} onClick={() => setSeasonType('RS')}>Regular Season</button>
+            <button className={`vc-btn${seasonType === 'PO' ? ' on' : ''}`} onClick={() => setSeasonType('PO')}>Playoffs</button>
           </div>
-          <span className="viz-filter-label">Era:</span>
-          {['All', ...ERAS].map(e => (
-            <button key={e} className={`viz-era-btn${eraFilter === e ? ' on' : ''}`}
-              style={e !== 'All' && eraFilter === e ? {background: EC[e], color: '#fff', borderColor: EC[e]} : {}}
-              onClick={() => setEraFilter(e)}>{e}</button>
-          ))}
+          <div className="vc-eras">
+            {['All', ...ERAS].map(e => (
+              <button key={e} className={`vc-erabtn${eraFilter === e ? ' on' : ''}`}
+                style={e !== 'All' && eraFilter === e ? { background: EC[e], borderColor: EC[e], color: '#08090A' } : {}}
+                onClick={() => setEraFilter(e)}>{e}</button>
+            ))}
+          </div>
         </div>
 
-        <div className="bento">
-          <div className="bento-item bento-wide"><YearlyTop3 data={seasons} seasonType={seasonType} /></div>
-          <div className="bento-item bento-wide"><OffVsDefScatter data={filtered} /></div>
-          <div className="bento-item bento-half"><ClutchCareerBars data={careerClutch} /></div>
-          <div className="bento-item bento-half"><PeakAgeChart data={filtered} /></div>
-          <div className="bento-item bento-wide"><EraTimeline data={seasons} seasonType={seasonType} /></div>
-          <div className="bento-item bento-half"><EraDistribution data={seasons} seasonType={seasonType} /></div>
-          <div className="bento-item bento-half"><ReignVsPPG data={filtered} /></div>
+        <div className="viz-grid">
+          <LeagueEvolution data={viz.timeline[seasonType]} />
+          <OffDefScatter data={viz.scatter[seasonType]} eraFilter={eraFilter} />
+          <YearlyTop3 data={viz.yearlyTop3[seasonType]} />
+          <PeakAge data={viz.peakAge[seasonType][eraFilter]} />
+          <ClutchTop25 data={viz.clutchTop25} />
         </div>
       </div>
     </div>
   );
 }
 
-/* ═══ Yearly Top 3 REIGN ═══ */
-function YearlyTop3({ data, seasonType }) {
-  const chartData = useMemo(() => {
-    const filtered = data.filter(r => r.type === seasonType);
-    const years = [...new Set(filtered.map(r => r.year))].sort();
-    return years.map(yr => {
-      const top = filtered.filter(r => r.year === yr).sort((a,b) => b.reign - a.reign).slice(0, 3);
-      return {
-        year: yr, label: "'" + String(yr+1).slice(-2),
-        r1: top[0]?.reign || 0, n1: top[0]?.name || '', e1: top[0]?.era || '',
-        r2: top[1]?.reign || 0, n2: top[1]?.name || '', e2: top[1]?.era || '',
-        r3: top[2]?.reign || 0, n3: top[2]?.name || '', e3: top[2]?.era || '',
-      };
-    });
-  }, [data, seasonType]);
-
+/* ═══ League Evolution — dual line with era bands ═══ */
+function LeagueEvolution({ data }) {
+  const [hi, setHi] = useState(null);
+  const W = 1000, H = 360, P = { t: 24, r: 52, b: 38, l: 48 };
+  const y0 = data[0].year, y1 = data[data.length - 1].year;
+  const xs = yr => P.l + ((yr - y0) / (y1 - y0 || 1)) * (W - P.l - P.r);
+  const tsY = v => P.t + (1 - (v - 44) / 16) * (H - P.t - P.b);
+  const ppY = v => P.t + (1 - (v - 6) / 8) * (H - P.t - P.b);
+  const tsPath = data.map(d => `${xs(d.year).toFixed(1)},${tsY(d.avgTS).toFixed(1)}`).join(' ');
+  const ppPath = data.map(d => `${xs(d.year).toFixed(1)},${ppY(d.avgPPG).toFixed(1)}`).join(' ');
+  const bands = [['Pioneer', 1946, 1962], ['Legacy', 1963, 1995], ['Classic', 1996, 2012], ['Modern', 2013, 2026]];
+  const onMove = e => {
+    const { x, px, py } = vbPoint(e, W, H);
+    const yr = Math.round(y0 + ((x - P.l) / (W - P.l - P.r)) * (y1 - y0));
+    const idx = data.findIndex(d => d.year === Math.max(y0, Math.min(y1, yr)));
+    if (idx >= 0) setHi({ d: data[idx], px, py });
+  };
   return (
-    <div className="vc">
-      <div className="vc-header">
-        <div>
-          <h2 className="vc-t">Top 3 REIGN by Year</h2>
-          <p className="vc-d">The three best players every season — who dominated each year?</p>
-        </div>
+    <Card span="wide" title="League Evolution" desc="Scoring (gold) and shooting efficiency (mint) across 80 years — era bands mark the regime changes.">
+      <div className="vchart" onMouseMove={onMove} onMouseLeave={() => setHi(null)}>
+        <svg viewBox={`0 0 ${W} ${H}`} className="vsvg">
+          {bands.map(([era, a, b]) => <rect key={era} x={xs(Math.max(a, y0))} y={P.t} width={xs(Math.min(b, y1)) - xs(Math.max(a, y0))} height={H - P.t - P.b} fill={EC[era]} opacity={0.07} />)}
+          {[46, 50, 54, 58].map(v => <g key={v}><line x1={P.l} y1={tsY(v)} x2={W - P.r} y2={tsY(v)} stroke="rgba(135,137,192,0.1)" /><text x={P.l - 8} y={tsY(v) + 4} textAnchor="end" className="vaxis" fill={MINT}>{v}</text></g>)}
+          {[8, 10, 12].map(v => <text key={v} x={W - P.r + 8} y={ppY(v) + 4} className="vaxis" fill={GOLD}>{v}</text>)}
+          {bands.map(([era, a]) => a >= y0 && a <= y1 && <text key={era} x={xs(a) + 4} y={P.t + 13} className="vband">{era}</text>)}
+          <polyline points={ppPath} fill="none" stroke={GOLD} strokeWidth="3" strokeLinejoin="round" />
+          <polyline points={tsPath} fill="none" stroke={MINT} strokeWidth="3" strokeLinejoin="round" />
+          {data.filter((_, i) => i % 6 === 0).map(d => <text key={d.year} x={xs(d.year)} y={H - 14} textAnchor="middle" className="vaxis">'{String(d.year + 1).slice(-2)}</text>)}
+          {hi && <g pointerEvents="none"><line x1={xs(hi.d.year)} y1={P.t} x2={xs(hi.d.year)} y2={H - P.b} stroke="rgba(255,255,255,0.25)" /><circle cx={xs(hi.d.year)} cy={tsY(hi.d.avgTS)} r="5" fill={MINT} /><circle cx={xs(hi.d.year)} cy={ppY(hi.d.avgPPG)} r="5" fill={GOLD} /></g>}
+        </svg>
+        <div className="vlegend"><span><i style={{ background: MINT }} />Avg TS%</span><span><i style={{ background: GOLD }} />Avg PPG</span></div>
+        {hi && <Tip pos={hi}><b>'{String(hi.d.year + 1).slice(-2)} Season</b><span style={{ color: MINT }}>{hi.d.avgTS}% TS</span><span style={{ color: GOLD }}>{hi.d.avgPPG} PPG</span></Tip>}
       </div>
-      <ResponsiveContainer width="100%" height={500}>
-        <BarChart data={chartData} margin={{top: 10, right: 10, bottom: 36, left: 10}}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(135,137,192,0.08)" vertical={false} />
-          <XAxis dataKey="label" tick={{fontSize: 14, fontWeight: 900, fill: '#08090A'}} interval={2} angle={-45} textAnchor="end" height={56} />
-          <YAxis tick={{fontSize: 15, fontWeight: 900, fill: '#08090A'}} domain={[0, 'auto']} />
-          <Tooltip content={<Top3Tip />} />
-          <Legend wrapperStyle={{fontSize: 15, fontWeight: 900}} />
-          <Bar dataKey="r1" name="#1 REIGN" fill="#065f46" radius={[4,4,0,0]} barSize={10} />
-          <Bar dataKey="r2" name="#2 REIGN" fill="#10B981" radius={[4,4,0,0]} barSize={10} />
-          <Bar dataKey="r3" name="#3 REIGN" fill="#a7f3d0" radius={[4,4,0,0]} barSize={10} />
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
+    </Card>
   );
 }
 
-/* ═══ OFF vs DEF with Quadrants ═══ */
-function OffVsDefScatter({ data }) {
-  const pts = useMemo(() => data.filter(r => r.reign >= 10).map(r => ({
-    x: r.reign_off, y: r.reign_def, name: r.name, year: r.year, reign: r.reign, era: r.era,
-  })), [data]);
+/* ═══ OFF vs DEF quadrant scatter ═══ */
+function OffDefScatter({ data, eraFilter }) {
+  const [hi, setHi] = useState(null);
+  const pts = useMemo(() => eraFilter === 'All' ? data : data.filter(d => d.era === eraFilter), [data, eraFilter]);
+  const W = 1000, H = 460, P = { t: 20, r: 24, b: 40, l: 46 };
+  const xMax = 22, yMin = -2, yMax = 12;
+  const xs = v => P.l + (v / xMax) * (W - P.l - P.r);
+  const ys = v => P.t + (1 - (v - yMin) / (yMax - yMin)) * (H - P.t - P.b);
   return (
-    <div className="vc">
-      <h2 className="vc-t">Offense vs Defense</h2>
-      <p className="vc-d">Top-right = elite two-way · Bottom-right = pure scorer · Top-left = defensive anchor</p>
-      <ResponsiveContainer width="100%" height={540}>
-        <ScatterChart margin={{top: 20, right: 20, bottom: 36, left: 20}}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(135,137,192,0.1)" />
-          <XAxis dataKey="x" type="number" tick={{fontSize: 15, fontWeight: 900, fill: '#08090A'}} label={{value: 'OFF REIGN →', position: 'bottom', offset: 10, fontSize: 16, fontWeight: 900, fill: '#4a4d60'}} />
-          <YAxis dataKey="y" type="number" tick={{fontSize: 15, fontWeight: 900, fill: '#08090A'}} label={{value: '← DEF REIGN', angle: -90, position: 'left', offset: 0, fontSize: 16, fontWeight: 900, fill: '#4a4d60'}} />
-          <ReferenceLine x={12} stroke="rgba(135,137,192,0.2)" strokeDasharray="4 4" />
-          <ReferenceLine y={3} stroke="rgba(135,137,192,0.2)" strokeDasharray="4 4" />
-          <ReferenceArea x1={12} x2={22} y1={3} y2={12} fill="rgba(93,253,203,0.04)" />
-          <ReferenceArea x1={0} x2={12} y1={3} y2={12} fill="rgba(37,99,235,0.03)" />
-          <ReferenceArea x1={12} x2={22} y1={-2} y2={3} fill="rgba(217,119,6,0.03)" />
-          <Tooltip content={<ScatterTip />} />
-          {ERAS.map(era => <Scatter key={era} name={era} data={pts.filter(r => r.era === era)} fill={EC[era]} opacity={0.7} r={5} />)}
-        </ScatterChart>
-      </ResponsiveContainer>
-      <div className="quad-labels">
-        <span className="ql ql-tl">Defensive Anchor</span><span className="ql ql-tr">Elite Two-Way</span>
-        <span className="ql ql-bl">Role Player</span><span className="ql ql-br">Offensive Star</span>
+    <Card span="wide" title="Offense vs Defense" desc="Every elite season (REIGN ≥ 10) placed by its two-way profile. Top-right = complete superstars.">
+      <div className="vchart" onMouseLeave={() => setHi(null)}>
+        <svg viewBox={`0 0 ${W} ${H}`} className="vsvg" onMouseMove={e => hi && setHi({ ...hi, ...((p) => ({ px: p.px, py: p.py }))(vbPoint(e, W, H)) })}>
+          <rect x={xs(12)} y={ys(yMax)} width={xs(xMax) - xs(12)} height={ys(3) - ys(yMax)} fill={MINT} opacity={0.05} />
+          <line x1={xs(12)} y1={P.t} x2={xs(12)} y2={H - P.b} stroke="rgba(135,137,192,0.25)" strokeDasharray="4 4" />
+          <line x1={P.l} y1={ys(3)} x2={W - P.r} y2={ys(3)} stroke="rgba(135,137,192,0.25)" strokeDasharray="4 4" />
+          {[0, 6, 12, 18].map(v => <text key={v} x={xs(v)} y={H - 14} textAnchor="middle" className="vaxis">{v}</text>)}
+          {[0, 4, 8].map(v => <text key={v} x={P.l - 8} y={ys(v) + 4} textAnchor="end" className="vaxis">{v}</text>)}
+          <text x={W - P.r} y={H - 14} textAnchor="end" className="vaxislbl">OFF REIGN →</text>
+          <text x={P.l - 8} y={P.t + 4} className="vaxislbl">DEF ↑</text>
+          {pts.map((d, i) => <circle key={i} cx={xs(d.off)} cy={ys(d.def)} r={hi?.d === d ? 7 : 4.2} fill={EC[d.era]} opacity={hi && hi.d !== d ? 0.3 : 0.78} onMouseEnter={e => setHi({ d, ...vbPoint(e, W, H) })} style={{ transition: 'r .1s' }} />)}
+          <text x={xs(17)} y={ys(9)} className="vquad">ELITE TWO-WAY</text>
+          <text x={xs(17)} y={ys(0.5)} className="vquad">OFFENSIVE STAR</text>
+          <text x={xs(2)} y={ys(9)} className="vquad">DEFENSIVE ANCHOR</text>
+        </svg>
+        {hi && <Tip pos={hi}><b>{hi.d.name} '{String(hi.d.year + 1).slice(-2)}</b><span>OFF +{hi.d.off} · DEF +{hi.d.def}</span><span style={{ color: MINT }}>REIGN +{hi.d.reign}</span></Tip>}
       </div>
-    </div>
+    </Card>
   );
 }
 
-/* ═══ Clutch Career Dual Bars ═══ */
-function ClutchCareerBars({ data }) {
-  const top25 = useMemo(() => {
-    if (!data) return [];
-    return [...data].filter(r => r.rs_gp >= 50).sort((a,b) => b.rs_avg_pts - a.rs_avg_pts).slice(0, 25)
-      .map(r => ({ name: r.name, avg_ppg: r.rs_avg_pts, tot_pts: r.rs_tot_pts, tot_pm: Math.max(r.rs_tot_pm, 0), gp: r.rs_gp }));
-  }, [data]);
-  if (!top25.length) return <div className="vc"><p className="vc-d">Loading clutch data...</p></div>;
+/* ═══ Top 3 REIGN by Year — stacked bars ═══ */
+function YearlyTop3({ data }) {
+  const [hi, setHi] = useState(null);
+  const W = 1000, H = 360, P = { t: 18, r: 16, b: 36, l: 36 };
+  const max = Math.max(...data.map(d => (d.top[0]?.reign || 0) + (d.top[1]?.reign || 0) + (d.top[2]?.reign || 0)));
+  const n = data.length, bw = (W - P.l - P.r) / n;
+  const ys = v => P.t + (1 - v / max) * (H - P.t - P.b);
+  const shades = ['#065f46', '#10B981', '#a7f3d0'];
   return (
-    <div className="vc">
-      <h2 className="vc-t">Clutch Careers — Top 25</h2>
-      <p className="vc-d">Sorted by clutch PPG · Gold = total points · Green = total +/−</p>
-      <ResponsiveContainer width="100%" height={620}>
-        <BarChart data={top25} layout="vertical" margin={{top: 5, right: 20, bottom: 5, left: 140}}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(135,137,192,0.06)" horizontal={false} />
-          <XAxis type="number" tick={{fontSize: 14, fontWeight: 900, fill: '#08090A'}} />
-          <YAxis dataKey="name" type="category" tick={{fontSize: 13, fontWeight: 900, fill: '#08090A'}} width={135} interval={0} />
-          <Tooltip content={<ClutchBarTip />} />
-          <Legend wrapperStyle={{fontSize: 15, fontWeight: 900}} />
-          <Bar dataKey="tot_pts" name="Total Clutch PTS" fill="#D97706" radius={[0,4,4,0]} barSize={11} />
-          <Bar dataKey="tot_pm" name="Total Clutch +/−" fill="#10B981" radius={[0,4,4,0]} barSize={11} />
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
-  );
-}
-
-/* ═══ Peak Age ═══ */
-function PeakAgeChart({ data }) {
-  const ageDist = useMemo(() => {
-    const players = {};
-    data.forEach(r => { if (!r.age) return; if (!players[r.name] || r.reign > players[r.name].reign) players[r.name] = { age: Math.round(r.age), reign: r.reign }; });
-    const counts = {};
-    Object.values(players).forEach(p => { const a = p.age; if (a >= 19 && a <= 39) counts[a] = (counts[a] || 0) + 1; });
-    return Object.entries(counts).map(([age, count]) => ({ age: Number(age), count })).sort((a,b) => a.age - b.age);
-  }, [data]);
-  return (
-    <div className="vc">
-      <h2 className="vc-t">Peak Age Distribution</h2>
-      <p className="vc-d">At what age do players hit their REIGN peak?</p>
-      <ResponsiveContainer width="100%" height={400}>
-        <BarChart data={ageDist} margin={{top: 10, right: 10, bottom: 36, left: 10}}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(135,137,192,0.06)" vertical={false} />
-          <XAxis dataKey="age" tick={{fontSize: 15, fontWeight: 900, fill: '#08090A'}} label={{value: 'Age at Peak', position: 'bottom', offset: 10, fontSize: 16, fontWeight: 900, fill: '#4a4d60'}} />
-          <YAxis tick={{fontSize: 14, fontWeight: 900, fill: '#08090A'}} />
-          <Tooltip content={<AgeTip />} />
-          <Bar dataKey="count" radius={[5,5,0,0]} barSize={32}>
-            {ageDist.map((r, i) => <Cell key={i} fill={r.age >= 25 && r.age <= 30 ? '#5DFDCB' : r.age >= 23 && r.age <= 32 ? '#a7f3d0' : '#e2eaf2'} />)}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
-  );
-}
-
-/* ═══ Era Timeline with shading ═══ */
-function EraTimeline({ data, seasonType }) {
-  const timeline = useMemo(() => {
-    const rs = data.filter(r => r.type === seasonType && (r.pts || 0) > 0);
-    return [...new Set(rs.map(r => r.year))].sort().map(yr => {
-      const season = rs.filter(r => r.year === yr);
-      const tsVals = season.map(r => r.tsp || 0).filter(v => v > 0);
-      const avgTS = tsVals.length ? tsVals.reduce((a,b) => a+b, 0) / tsVals.length : 0;
-      const avgPTS = season.reduce((s,r) => s + (r.pts||0), 0) / season.length;
-      return { year: yr, label: "'" + String(yr+1).slice(-2), avgTS: Math.round((avgTS <= 1 ? avgTS * 100 : avgTS) * 10) / 10, avgPTS: Math.round(avgPTS * 10) / 10 };
-    });
-  }, [data, seasonType]);
-  return (
-    <div className="vc">
-      <h2 className="vc-t">League Evolution</h2>
-      <p className="vc-d">Scoring (gold) and efficiency (mint) across 80 years · Era bands show regime changes</p>
-      <ResponsiveContainer width="100%" height={420}>
-        <LineChart data={timeline} margin={{top: 10, right: 20, bottom: 36, left: 15}}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(135,137,192,0.06)" />
-          {ERAS.map(era => {
-            const [s, e] = ERA_YEARS[era];
-            return <ReferenceArea key={era} x1={"'" + String(s+1).slice(-2)} x2={"'" + String(Math.min(e,2025)+1).slice(-2)} fill={EC[era]} fillOpacity={0.06} />;
+    <Card span="wide" title="Top 3 REIGN by Year" desc="The three best players of every season, stacked — taller years had deeper greatness at the top.">
+      <div className="vchart" onMouseLeave={() => setHi(null)}>
+        <svg viewBox={`0 0 ${W} ${H}`} className="vsvg">
+          {[0.25, 0.5, 0.75, 1].map(f => <line key={f} x1={P.l} y1={ys(max * f)} x2={W - P.r} y2={ys(max * f)} stroke="rgba(135,137,192,0.08)" />)}
+          {data.map((d, i) => {
+            const x = P.l + i * bw; let acc = 0;
+            return (
+              <g key={d.year} onMouseEnter={e => setHi({ d, ...vbPoint(e, W, H) })}>
+                <rect x={x} y={P.t} width={bw} height={H - P.t - P.b} fill="transparent" />
+                {d.top.map((t, j) => { const h = (t.reign / max) * (H - P.t - P.b); const yy = ys(acc + t.reign); acc += t.reign; return <rect key={j} x={x + bw * 0.12} y={yy} width={bw * 0.76} height={h} fill={shades[j]} opacity={hi && hi.d !== d ? 0.4 : 1} />; })}
+              </g>
+            );
           })}
-          <XAxis dataKey="label" tick={{fontSize: 14, fontWeight: 900, fill: '#08090A'}} interval={4} />
-          <YAxis yAxisId="ts" domain={[44, 60]} tick={{fontSize: 15, fontWeight: 900, fill: '#08090A'}} />
-          <YAxis yAxisId="pts" orientation="right" domain={[6, 14]} tick={{fontSize: 15, fontWeight: 900, fill: '#08090A'}} />
-          <Tooltip content={<TimelineTip />} />
-          <Legend wrapperStyle={{fontSize: 15, fontWeight: 900}} />
-          <Line yAxisId="ts" type="monotone" dataKey="avgTS" name="Avg TS%" stroke="#5DFDCB" strokeWidth={3.5} dot={false} />
-          <Line yAxisId="pts" type="monotone" dataKey="avgPTS" name="Avg PPG" stroke="#F59E0B" strokeWidth={3.5} dot={false} />
-        </LineChart>
-      </ResponsiveContainer>
-    </div>
+          {data.filter((_, i) => i % 6 === 0).map((d, i) => <text key={d.year} x={P.l + data.indexOf(d) * bw + bw / 2} y={H - 14} textAnchor="middle" className="vaxis">'{String(d.year + 1).slice(-2)}</text>)}
+        </svg>
+        {hi && <Tip pos={hi}><b>'{String(hi.d.year + 1).slice(-2)} Season</b>{hi.d.top.map((t, j) => <span key={j} style={{ color: shades[j] === '#a7f3d0' ? '#a7f3d0' : shades[j] === '#10B981' ? '#10B981' : MINT }}>#{j + 1} {t.name} · +{t.reign}</span>)}</Tip>}
+      </div>
+    </Card>
   );
 }
 
-/* ═══ Era Distribution ═══ */
-function EraDistribution({ data, seasonType }) {
-  const dist = useMemo(() => {
-    const rs = data.filter(r => r.type === seasonType && (r.min || 0) > 15);
-    const buckets = [];
-    for (let v = -5; v <= 28; v += 2.5) {
-      const row = { range: `${v >= 0 ? '+' : ''}${v}` };
-      ERAS.forEach(era => { row[era] = rs.filter(r => r.era === era && r.reign >= v && r.reign < v + 2.5).length; });
-      buckets.push(row);
-    }
-    return buckets;
-  }, [data, seasonType]);
+/* ═══ Peak Age histogram ═══ */
+function PeakAge({ data }) {
+  const [hi, setHi] = useState(null);
+  const W = 480, H = 360, P = { t: 18, r: 12, b: 40, l: 34 };
+  if (!data?.length) return <Card span="half" title="Peak Age" desc="No data for this filter."><div className="vchart" /></Card>;
+  const max = Math.max(...data.map(d => d.count));
+  const bw = (W - P.l - P.r) / data.length;
+  const ys = v => P.t + (1 - v / max) * (H - P.t - P.b);
   return (
-    <div className="vc">
-      <h2 className="vc-t">REIGN Distribution by Era</h2>
-      <p className="vc-d">How scores spread — stacked by era</p>
-      <ResponsiveContainer width="100%" height={400}>
-        <BarChart data={dist} margin={{top: 10, right: 10, bottom: 36, left: 10}}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(135,137,192,0.06)" vertical={false} />
-          <XAxis dataKey="range" tick={{fontSize: 14, fontWeight: 900, fill: '#08090A'}} label={{value: 'REIGN Score', position: 'bottom', offset: 10, fontSize: 16, fontWeight: 900, fill: '#4a4d60'}} />
-          <YAxis tick={{fontSize: 14, fontWeight: 900, fill: '#08090A'}} />
-          <Tooltip />
-          <Legend wrapperStyle={{fontSize: 15, fontWeight: 900}} />
-          {ERAS.map(era => <Bar key={era} dataKey={era} stackId="a" fill={EC[era]} opacity={0.85} />)}
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
+    <Card span="half" title="Peak Age" desc="The age each player hit their REIGN peak — the prime window glows.">
+      <div className="vchart" onMouseLeave={() => setHi(null)}>
+        <svg viewBox={`0 0 ${W} ${H}`} className="vsvg">
+          {data.map((d, i) => {
+            const x = P.l + i * bw, h = (d.count / max) * (H - P.t - P.b);
+            const prime = d.age >= 25 && d.age <= 30, near = d.age >= 23 && d.age <= 32;
+            return (
+              <g key={d.age} onMouseEnter={e => setHi({ d, ...vbPoint(e, W, H) })}>
+                <rect x={x} y={P.t} width={bw} height={H - P.t - P.b} fill="transparent" />
+                <rect x={x + bw * 0.14} y={ys(d.count)} width={bw * 0.72} height={h} rx={2} fill={prime ? MINT : near ? '#3a8d75' : '#2a3340'} opacity={hi && hi.d !== d ? 0.5 : 1} />
+                {d.age % 2 === 1 && <text x={x + bw / 2} y={H - 16} textAnchor="middle" className="vaxis">{d.age}</text>}
+              </g>
+            );
+          })}
+          <text x={W / 2} y={H - 2} textAnchor="middle" className="vaxislbl">Age at peak</text>
+        </svg>
+        {hi && <Tip pos={hi}><b>Age {hi.d.age}</b><span>{hi.d.count} players peaked here</span></Tip>}
+      </div>
+    </Card>
   );
 }
 
-/* ═══ REIGN vs PPG with trend ═══ */
-function ReignVsPPG({ data }) {
-  const pts = useMemo(() => data.filter(r => r.reign >= 5 && (r.pts || 0) > 0).map(r => ({
-    x: r.pts, y: r.reign, name: r.name, year: r.year, era: r.era,
-  })), [data]);
-  const n = pts.length; const sx = pts.reduce((s,p) => s+p.x, 0); const sy = pts.reduce((s,p) => s+p.y, 0);
-  const sxy = pts.reduce((s,p) => s+p.x*p.y, 0); const sxx = pts.reduce((s,p) => s+p.x*p.x, 0);
-  const slope = n > 1 ? (n*sxy - sx*sy) / (n*sxx - sx*sx) : 0;
-  const intercept = n > 1 ? (sy - slope*sx) / n : 0;
-  const trendData = [{ x: 5, y: slope*5+intercept }, { x: 35, y: slope*35+intercept }];
+/* ═══ Clutch Top 25 — horizontal bars ═══ */
+function ClutchTop25({ data }) {
+  const [hi, setHi] = useState(null);
+  const W = 480, rowH = 22, P = { t: 8, r: 16, b: 8, l: 122 };
+  const H = P.t + P.b + data.length * rowH;
+  const max = Math.max(...data.map(d => d.tot_pts));
+  const xs = v => P.l + (v / max) * (W - P.l - P.r);
   return (
-    <div className="vc">
-      <h2 className="vc-t">REIGN vs Scoring</h2>
-      <p className="vc-d">More points ≠ more impact — dashed line = trend</p>
-      <ResponsiveContainer width="100%" height={440}>
-        <ScatterChart margin={{top: 10, right: 10, bottom: 36, left: 15}}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(135,137,192,0.1)" />
-          <XAxis dataKey="x" type="number" tick={{fontSize: 15, fontWeight: 900, fill: '#08090A'}} label={{value: 'PPG →', position: 'bottom', offset: 10, fontSize: 16, fontWeight: 900, fill: '#4a4d60'}} />
-          <YAxis dataKey="y" type="number" tick={{fontSize: 15, fontWeight: 900, fill: '#08090A'}} label={{value: 'REIGN', angle: -90, position: 'left', fontSize: 16, fontWeight: 900, fill: '#4a4d60'}} />
-          <Tooltip content={<PPGTip />} />
-          {ERAS.map(era => <Scatter key={era} name={era} data={pts.filter(r => r.era === era)} fill={EC[era]} opacity={0.5} r={4} />)}
-          <Scatter name="trend" data={trendData} fill="none" line={{stroke: '#08090A', strokeWidth: 2, strokeDasharray: '8 4'}} legendType="none" r={0} />
-        </ScatterChart>
-      </ResponsiveContainer>
-    </div>
+    <Card span="half" title="Clutch Careers — Top 25" desc="Most total clutch points (last 5 min, ≤5 pt game). Bar = total points, sorted by clutch PPG.">
+      <div className="vchart" onMouseLeave={() => setHi(null)}>
+        <svg viewBox={`0 0 ${W} ${H}`} className="vsvg" style={{ maxHeight: 'none' }}>
+          {data.map((d, i) => {
+            const y = P.t + i * rowH;
+            return (
+              <g key={d.name} onMouseEnter={e => setHi({ d, ...vbPoint(e, W, H) })}>
+                <rect x={0} y={y} width={W} height={rowH} fill={hi?.d === d ? 'rgba(255,255,255,0.04)' : 'transparent'} />
+                <text x={P.l - 8} y={y + rowH / 2 + 4} textAnchor="end" className="vname">{d.name}</text>
+                <rect x={P.l} y={y + 3} width={Math.max(2, xs(d.tot_pts) - P.l)} height={rowH - 6} rx={3} fill={GOLD} opacity={hi && hi.d !== d ? 0.5 : 0.92} />
+                <text x={xs(d.tot_pts) + 5} y={y + rowH / 2 + 4} className="vbarval">{d.avg_ppg}</text>
+              </g>
+            );
+          })}
+        </svg>
+        {hi && <Tip pos={hi}><b>{hi.d.name}</b><span style={{ color: GOLD }}>{hi.d.tot_pts} total clutch pts</span><span>{hi.d.avg_ppg} PPG · +{hi.d.tot_pm} +/− · {hi.d.gp} GP</span></Tip>}
+      </div>
+    </Card>
   );
-}
-
-/* ═══ Tooltips ═══ */
-const Tip = ({children}) => <div className="vt">{children}</div>;
-const TN = ({children}) => <div className="vt-n">{children}</div>;
-const TS = ({children}) => <div className="vt-s">{children}</div>;
-
-function ScatterTip({ active, payload }) {
-  if (!active || !payload?.length) return null;
-  const d = payload[0].payload;
-  return <Tip><TN>{d.name} '{String((d.year||0)+1).slice(-2)}</TN><TS>OFF: +{d.x?.toFixed(1)} · DEF: +{d.y?.toFixed(1)} · REIGN: +{d.reign?.toFixed(1)}</TS></Tip>;
-}
-function Top3Tip({ active, payload, label }) {
-  if (!active || !payload?.length) return null;
-  const d = payload[0]?.payload;
-  if (!d) return null;
-  return <Tip>
-    <TN>Season {label}</TN>
-    <TS>
-      {d.n1 && <div>#1 {d.n1}: +{d.r1?.toFixed(1)}</div>}
-      {d.n2 && <div>#2 {d.n2}: +{d.r2?.toFixed(1)}</div>}
-      {d.n3 && <div>#3 {d.n3}: +{d.r3?.toFixed(1)}</div>}
-    </TS>
-  </Tip>;
-}
-function ClutchBarTip({ active, payload }) {
-  if (!active || !payload?.length) return null;
-  const d = payload[0].payload;
-  return <Tip><TN>{d.name}</TN><TS>Clutch PPG: {d.avg_ppg} · Total PTS: {d.tot_pts?.toFixed(0)} · Total +/−: +{d.tot_pm?.toFixed(0)} · GP: {d.gp}</TS></Tip>;
-}
-function TimelineTip({ active, payload, label }) {
-  if (!active || !payload?.length) return null;
-  return <Tip><TN>Season {label}</TN><TS>{payload.map(p => <div key={p.name}>{p.name}: {p.value}</div>)}</TS></Tip>;
-}
-function AgeTip({ active, payload }) {
-  if (!active || !payload?.length) return null;
-  return <Tip><TN>Age {payload[0].payload.age}</TN><TS>{payload[0].payload.count} players peaked here</TS></Tip>;
-}
-function PPGTip({ active, payload }) {
-  if (!active || !payload?.length) return null;
-  const d = payload[0].payload;
-  if (!d.name) return null;
-  return <Tip><TN>{d.name} '{String((d.year||0)+1).slice(-2)}</TN><TS>PPG: {d.x?.toFixed(1)} · REIGN: +{d.y?.toFixed(1)}</TS></Tip>;
 }
