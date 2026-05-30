@@ -401,3 +401,8 @@ td.t-pct {
   .reign-score { font-size: 1.15rem; }
   td.t-off, td.t-def { font-size: 0.9rem; }
 }
+
+/* Player crest in leaderboard rows */
+.t-name-row { display: flex; align-items: center; gap: 8px; }
+.t-name-txt { min-width: 0; }
+.t-crest { flex: none; }

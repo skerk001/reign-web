@@ -258,3 +258,22 @@
   .pl-grid { grid-template-columns: 1fr; }
   .pl-results { width: 100%; }
 }
+
+/* ── Generative player art ── */
+.pc-crest, .prof-crest { flex: none; }
+.prof-info { display: flex; align-items: center; gap: 18px; }
+.prof-idtext { min-width: 0; }
+.prof-skyline-wrap {
+  position: relative;
+  margin: 18px 0 6px;
+  border: 1px solid rgba(135,137,192,0.18);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.career-skyline svg { width: 100%; height: auto; display: block; }
+.prof-skyline-cap {
+  position: absolute; left: 14px; bottom: 9px;
+  font-size: 0.72rem; color: #b0b4d0; font-weight: 600; letter-spacing: 0.3px;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+}
+@media (max-width: 640px) { .prof-skyline-cap { display: none; } }

@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { formatReign } from '../utils/format';
 import { useJSON, useAllSeasons } from '../hooks/useData';
+import { PlayerCrest } from '../components/PlayerArt';
 import Loading from '../components/Loading';
 import './Rankings.css';
 
@@ -291,8 +292,10 @@ export default function Rankings() {
                           : <span className="rknum">{rank}</span>}
                       </td>
                       <td className="t-name">
-                        <strong className="pn">{r.name}</strong>
-                        <span className="pt">{r.team}</span>
+                        <span className="t-name-row">
+                          <PlayerCrest name={r.name} team={r.team || (r.teams || [])[0]} size={20} compact className="t-crest" />
+                          <span className="t-name-txt"><strong className="pn">{r.name}</strong><span className="pt">{r.team}</span></span>
+                        </span>
                       </td>
                       <td className="t-yrs"><span className="yr-range">{r.yr_label}</span></td>
                       <td className="t-era">{(r.eras || [r.era]).map(e => <span key={e} className={`et e-${(e||'')[0]?.toLowerCase()}`}>{(e||'')[0]}</span>)}</td>
@@ -352,8 +355,10 @@ export default function Rankings() {
                           : <span className="rknum">{rank}</span>}
                       </td>
                       <td className="t-name">
-                        <strong className="pn">{r.name}</strong>
-                        <span className="pt">{r.team || (r.teams || []).slice(0,3).join(' · ')}</span>
+                        <span className="t-name-row">
+                          <PlayerCrest name={r.name} team={r.team || (r.teams || [])[0]} size={20} compact className="t-crest" />
+                          <span className="t-name-txt"><strong className="pn">{r.name}</strong><span className="pt">{r.team || (r.teams || []).slice(0,3).join(' · ')}</span></span>
+                        </span>
                       </td>
                       <td className="t-yrs"><span className="yr-range">{r.yr_label}</span></td>
                       <td className="t-era">

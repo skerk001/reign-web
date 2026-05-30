@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { formatReign } from '../utils/format';
 import { fuzzySearch } from '../utils/fuzzySearch';
 import { useJSON, useAllSeasons } from '../hooks/useData';
+import { PlayerCrest, CareerSkyline } from '../components/PlayerArt';
 import Loading from '../components/Loading';
 import './Players.css';
 
@@ -288,6 +289,7 @@ export default function Players({ initialPlayer, onCompare }) {
         name,
         teams,
         eras,
+        peakTeam: peak.team,
         ys: rs[0].year,
         ye: rs[rs.length - 1].year,
         rp: peak.reign,
@@ -335,9 +337,7 @@ export default function Players({ initialPlayer, onCompare }) {
               return (
               <button key={c.name} className="pl-card" onClick={() => setSelected(c.name)} style={{borderTopColor: eraColor}}>
                 <div className="pc-top">
-                  <div className="pc-initials" style={{background: eraColor}}>
-                    {c.name.split(' ').map(w => w[0]).join('').slice(0, 2)}
-                  </div>
+                  <PlayerCrest name={c.name} team={c.peakTeam} off={c.rpo} def={c.rpd} peak={c.rp} size={42} className="pc-crest" />
                   <div className="pc-info">
                     <div className="pc-name">{c.name}</div>
                     <div className="pc-meta">{c.teams?.slice(0,3).join(' · ')} · {c.ys}–{String(c.ye+1).slice(-2)}</div>
@@ -510,10 +510,13 @@ function PlayerProfile({ name, seasons, onBack, onCompare }) {
         </div>
         <div className="prof-hero">
           <div className="prof-info">
-            <h1 className="prof-name">{name}</h1>
-            <div className="prof-meta">
-              {teams.join(' · ')} · {years} · {rs.length} RS{po.length > 0 && ` + ${po.length} PO`} seasons
-              <span className="prof-eras">{eras.map(e => <span key={e} className={`et e-${e[0].toLowerCase()}`}>{e}</span>)}</span>
+            <PlayerCrest name={name} team={peak.team} off={peak.reign_off} def={peak.reign_def} peak={peak.reign} size={60} className="prof-crest" />
+            <div className="prof-idtext">
+              <h1 className="prof-name">{name}</h1>
+              <div className="prof-meta">
+                {teams.join(' · ')} · {years} · {rs.length} RS{po.length > 0 && ` + ${po.length} PO`} seasons
+                <span className="prof-eras">{eras.map(e => <span key={e} className={`et e-${e[0].toLowerCase()}`}>{e}</span>)}</span>
+              </div>
             </div>
           </div>
           <div className="prof-stats">
@@ -527,6 +530,11 @@ function PlayerProfile({ name, seasons, onBack, onCompare }) {
             <div className="prof-stat"><span className="ps-val ps-avg">{formatReign(avgReign)}</span><span className="ps-label">Career Avg</span></div>
             {peakPO && <div className="prof-stat"><span className="ps-val ps-po">{formatReign(peakPO.reign)}</span><span className="ps-label">Peak PO</span><span className="ps-sub">{peakPO.year}-{String(peakPO.year+1).slice(-2)}</span></div>}
           </div>
+        </div>
+
+        <div className="prof-skyline-wrap">
+          <CareerSkyline name={name} seasons={rs.map(r => ({ year: r.year, reign: r.reign, team: r.team }))} />
+          <span className="prof-skyline-cap">Career Skyline · each tower a season, height = REIGN, color = team</span>
         </div>
 
         {/* Trophy Shelf */}
