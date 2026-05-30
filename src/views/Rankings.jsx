@@ -293,7 +293,7 @@ export default function Rankings() {
                       </td>
                       <td className="t-name">
                         <span className="t-name-row">
-                          <PlayerCrest name={r.name} team={r.team || (r.teams || [])[0]} size={20} compact className="t-crest" />
+                          <PlayerCrest name={r.name} team={r.team || (r.teams || [])[0]} size={28} compact className="t-crest" />
                           <span className="t-name-txt"><strong className="pn">{r.name}</strong><span className="pt">{r.team}</span></span>
                         </span>
                       </td>
@@ -356,7 +356,7 @@ export default function Rankings() {
                       </td>
                       <td className="t-name">
                         <span className="t-name-row">
-                          <PlayerCrest name={r.name} team={r.team || (r.teams || [])[0]} size={20} compact className="t-crest" />
+                          <PlayerCrest name={r.name} team={r.team || (r.teams || [])[0]} size={28} compact className="t-crest" />
                           <span className="t-name-txt"><strong className="pn">{r.name}</strong><span className="pt">{r.team || (r.teams || []).slice(0,3).join(' · ')}</span></span>
                         </span>
                       </td>

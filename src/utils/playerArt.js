@@ -105,32 +105,38 @@ export function crestSVG({ name, team, off = 0, def = 0, peak = 0, size = 120, c
  * Each season = a tower; height ∝ REIGN; color = team. A career drawn as a
  * city at night. `seasons`: [{ year, reign, team }] sorted by year.
  */
-export function skylineSVG({ name, seasons, w = 1000, h = 280 }) {
+export function skylineSVG({ name, seasons, w = 1000, h = 310 }) {
   const rnd = mulberry32(hashStr(name));
   if (!seasons || !seasons.length) return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"></svg>`;
-  const baseY = h - 30, maxR = Math.max(...seasons.map(s => s.reign), 1);
+  const topPad = 36, bottomPad = 48, baseY = h - bottomPad, avail = baseY - topPad;
+  const maxR = Math.max(...seasons.map(s => s.reign), 1);
   const n = seasons.length, bw = (w - 60) / n;
-  let bars = '';
+  const yrFont = bw < 30 ? 8 : 9.5, valFont = bw < 34 ? 8.5 : 10;
+  let bars = '', labels = '';
   seasons.forEach((s, i) => {
-    const bh = 18 + (Math.max(0, s.reign) / maxR) * (h - 95);
-    const x = 30 + i * bw, y = baseY - bh;
+    const bh = 16 + (Math.max(0, s.reign) / maxR) * (avail - 16);
+    const x = 30 + i * bw, y = baseY - bh, cx = x + bw / 2;
     const { primary, accent } = teamPalette(s.team);
+    const isPeak = s.reign === maxR;
     let windows = '';
     const rows = Math.floor(bh / 18), cols = Math.max(1, Math.floor(bw / 11));
-    for (let rr = 0; rr < rows; rr++) for (let cc = 0; cc < cols; cc++) if (rnd() > 0.5)
-      windows += `<rect x="${(x + 4 + cc * 9).toFixed(1)}" y="${(y + 9 + rr * 16).toFixed(1)}" width="3.5" height="6" fill="${accent}" opacity="${(0.35 + rnd() * 0.5).toFixed(2)}"/>`;
-    const peakMark = s.reign === maxR
-      ? `<circle cx="${(x + bw / 2).toFixed(1)}" cy="${(y - 12).toFixed(1)}" r="3" fill="${GOLD}"/><text x="${(x + bw / 2).toFixed(1)}" y="${(y - 20).toFixed(1)}" font-family="DejaVu Sans, sans-serif" font-size="10" fill="${GOLD}" text-anchor="middle">'${String(s.year + 1).slice(-2)}</text>` : '';
+    for (let rr = 0; rr < rows; rr++) for (let cc = 0; cc < cols; cc++) if (rnd() > 0.52)
+      windows += `<rect x="${(x + 4 + cc * 9).toFixed(1)}" y="${(y + 10 + rr * 16).toFixed(1)}" width="3.5" height="6" fill="${accent}" opacity="${(0.35 + rnd() * 0.5).toFixed(2)}"/>`;
     bars += `<g><rect x="${(x + 1.5).toFixed(1)}" y="${y.toFixed(1)}" width="${(bw - 3).toFixed(1)}" height="${bh.toFixed(1)}" fill="${primary}"/>`
       + `<rect x="${(x + 1.5).toFixed(1)}" y="${y.toFixed(1)}" width="${(bw - 3).toFixed(1)}" height="4" fill="${accent}"/>${windows}`
-      + `<rect x="${(x + 1.5).toFixed(1)}" y="${baseY}" width="${(bw - 3).toFixed(1)}" height="${(bh * 0.3).toFixed(1)}" fill="${primary}" opacity="0.16"/></g>${peakMark}`;
+      + `<rect x="${(x + 1.5).toFixed(1)}" y="${baseY}" width="${(bw - 3).toFixed(1)}" height="${(bh * 0.28).toFixed(1)}" fill="${primary}" opacity="0.16"/></g>`;
+    // REIGN value atop each tower
+    if (isPeak) labels += `<text x="${cx.toFixed(1)}" y="${(y - 19).toFixed(1)}" font-size="11" fill="${GOLD}" text-anchor="middle">★</text>`;
+    labels += `<text x="${cx.toFixed(1)}" y="${(y - 6).toFixed(1)}" font-family="DejaVu Sans, sans-serif" font-size="${valFont}" font-weight="${isPeak ? 'bold' : 'normal'}" fill="${isPeak ? GOLD : '#d2d5e2'}" text-anchor="middle">${s.reign.toFixed(1)}</text>`;
+    // season label under the baseline
+    labels += `<text x="${cx.toFixed(1)}" y="${(baseY + 16).toFixed(1)}" font-family="DejaVu Sans, sans-serif" font-size="${yrFont}" fill="#9498ad" text-anchor="middle">'${String(s.year + 1).slice(-2)}</text>`;
   });
-  const stars = Array.from({ length: 40 }, () => `<circle cx="${(rnd() * w).toFixed(0)}" cy="${(rnd() * (h - 120)).toFixed(0)}" r="${(rnd() * 1.1).toFixed(1)}" fill="#fff" opacity="${(rnd() * 0.6).toFixed(2)}"/>`).join('');
+  const stars = Array.from({ length: 30 }, () => `<circle cx="${(rnd() * w).toFixed(0)}" cy="${(rnd() * 22).toFixed(0)}" r="${(rnd() * 1.1).toFixed(1)}" fill="#fff" opacity="${(rnd() * 0.5).toFixed(2)}"/>`).join('');
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
    <defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#160d2e"/><stop offset="70%" stop-color="#08090A"/></linearGradient></defs>
    <rect width="${w}" height="${h}" fill="url(#sky)"/>
-   <circle cx="${w - 70}" cy="46" r="26" fill="${GOLD}" opacity="0.85"/><circle cx="${w - 80}" cy="40" r="26" fill="#160d2e"/>
    ${stars}${bars}
    <line x1="30" y1="${baseY}" x2="${w - 30}" y2="${baseY}" stroke="#2a2d3a" stroke-width="1"/>
+   ${labels}
   </svg>`;
 }
