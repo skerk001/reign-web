@@ -1,4 +1,4 @@
-.cmp { min-height: calc(100vh - var(--nav-height)); background: var(--bg); }
+.cmp { min-height: calc(100vh - var(--nav-height)); background: transparent; }
 .cmp-wrap { max-width: var(--max-width); margin: 0 auto; padding: 0 var(--pad) 60px; }
 
 /* ═══ HEADER ═══ */

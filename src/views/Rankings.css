@@ -1,4 +1,4 @@
-.rk { min-height: calc(100vh - var(--nav-height)); background: var(--bg); }
+.rk { min-height: calc(100vh - var(--nav-height)); background: transparent; }
 
 .rk-wrap { max-width: var(--max-width); margin: 0 auto; padding: 0 var(--pad); }
 

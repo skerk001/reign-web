@@ -1,4 +1,4 @@
-.mth { min-height: calc(100vh - var(--nav-height)); background: var(--bg); }
+.mth { min-height: calc(100vh - var(--nav-height)); background: transparent; }
 .mth-wrap { max-width: 920px; margin: 0 auto; padding: 0 var(--pad) 80px; }
 
 .mth-header { padding: 40px 0 18px; border-bottom: 1px solid var(--line); }

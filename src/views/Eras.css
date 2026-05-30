@@ -1,4 +1,4 @@
-.eras { min-height: calc(100vh - var(--nav-height)); background: var(--bg); }
+.eras { min-height: calc(100vh - var(--nav-height)); background: transparent; }
 .eras-wrap { max-width: var(--max-width); margin: 0 auto; padding: 0 var(--pad) 60px; }
 
 /* ═══ HEADER ═══ */

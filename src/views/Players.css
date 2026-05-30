@@ -1,4 +1,4 @@
-.pl { min-height: calc(100vh - var(--nav-height)); background: var(--bg); }
+.pl { min-height: calc(100vh - var(--nav-height)); background: transparent; }
 .pl-wrap { max-width: var(--max-width); margin: 0 auto; padding: 0 var(--pad) 60px; }
 
 /* ═══ HEADER ═══ */

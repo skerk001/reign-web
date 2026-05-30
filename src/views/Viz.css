@@ -1,5 +1,5 @@
 /* ═══ Visualizations — dark, bespoke ═══ */
-.viz { min-height: calc(100vh - var(--nav-height)); background: #08090A; }
+.viz { min-height: calc(100vh - var(--nav-height)); background: transparent; }
 .viz-wrap { max-width: var(--max-width); margin: 0 auto; padding: 0 var(--pad) 60px; }
 
 .viz-header { padding: 32px 0 16px; border-bottom: 1px solid rgba(135,137,192,0.18); }
