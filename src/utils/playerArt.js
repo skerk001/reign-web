@@ -131,11 +131,22 @@ export function skylineSVG({ name, seasons, w = 1000, h = 310 }) {
     // season label under the baseline
     labels += `<text x="${cx.toFixed(1)}" y="${(baseY + 16).toFixed(1)}" font-family="DejaVu Sans, sans-serif" font-size="${yrFont}" fill="#9498ad" text-anchor="middle">'${String(s.year + 1).slice(-2)}</text>`;
   });
-  const stars = Array.from({ length: 30 }, () => `<circle cx="${(rnd() * w).toFixed(0)}" cy="${(rnd() * 22).toFixed(0)}" r="${(rnd() * 1.1).toFixed(1)}" fill="#fff" opacity="${(rnd() * 0.5).toFixed(2)}"/>`).join('');
+  // Night sky: scattered stars (a few brighter, twinkling) over the upper area.
+  const stars = Array.from({ length: 80 }, () => {
+    const sx = (rnd() * w).toFixed(0), sy = (rnd() * (h * 0.5)).toFixed(0);
+    const big = rnd() > 0.9;
+    const r = big ? (1.3 + rnd() * 0.8).toFixed(1) : (rnd() * 1.1).toFixed(1);
+    const op = (big ? 0.7 + rnd() * 0.3 : rnd() * 0.55).toFixed(2);
+    const glow = big ? `<circle cx="${sx}" cy="${sy}" r="${(r * 2.4).toFixed(1)}" fill="#fff" opacity="${(op * 0.18).toFixed(2)}"/>` : '';
+    return `${glow}<circle cx="${sx}" cy="${sy}" r="${r}" fill="#fff" opacity="${op}"/>`;
+  }).join('');
+  // Crescent moon, upper-right
+  const mx = w - 64, my = 50;
+  const moon = `<circle cx="${mx}" cy="${my}" r="22" fill="${GOLD}" opacity="0.9"/><circle cx="${(mx - 9).toFixed(0)}" cy="${(my - 6).toFixed(0)}" r="20" fill="#160d2e"/>`;
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
    <defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#160d2e"/><stop offset="70%" stop-color="#08090A"/></linearGradient></defs>
    <rect width="${w}" height="${h}" fill="url(#sky)"/>
-   ${stars}${bars}
+   ${stars}${moon}${bars}
    <line x1="30" y1="${baseY}" x2="${w - 30}" y2="${baseY}" stroke="#2a2d3a" stroke-width="1"/>
    ${labels}
   </svg>`;

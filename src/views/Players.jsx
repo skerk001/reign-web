@@ -3,6 +3,7 @@ import { formatReign } from '../utils/format';
 import { fuzzySearch } from '../utils/fuzzySearch';
 import { useJSON, useAllSeasons } from '../hooks/useData';
 import { PlayerCrest, CareerSkyline } from '../components/PlayerArt';
+import { Constellation, StatBloom } from '../components/PlayerCharts';
 import Loading from '../components/Loading';
 import './Players.css';
 
@@ -561,11 +562,11 @@ function PlayerProfile({ name, seasons, onBack, onCompare }) {
                 <button className={`st-btn${radarMode==='career'?' on':''}`} onClick={()=>setRadarMode('career')}>Career Avg</button>
               </div>
             </div>
-            <SkillRadar data={radarData} label={radarMode === 'peak' ? `${peak.year}-${String(peak.year+1).slice(-2)}` : 'Career'} />
+            <StatBloom data={radarData} />
           </div>
         )}
 
-        <div className="prof-section"><h2 className="prof-section-title">Career Arc</h2><CareerChart rs={rs} po={po} /></div>
+        <div className="prof-section"><h2 className="prof-section-title">Career Constellation</h2><Constellation rs={rs} po={po} /></div>
 
         <div className="prof-section">
           <h2 className="prof-section-title">Season Heatmap</h2>
