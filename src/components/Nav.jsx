@@ -6,6 +6,7 @@ const VIEWS = [
   { id: 'compare', label: 'Compare' },
   { id: 'eras', label: 'Era Explorer' },
   { id: 'viz', label: 'Visualizations' },
+  { id: 'methodology', label: 'Methodology' },
 ];
 
 export default function Nav({ view, setView }) {

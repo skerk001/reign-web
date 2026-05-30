@@ -221,3 +221,11 @@
   text-shadow: 0 1px 3px rgba(0,0,0,0.8);
 }
 @media (max-width: 640px) { .prof-skyline-cap { display: none; } }
+
+/* ── Season Log ── */
+.sl-caption { font-size: 0.82rem; color: var(--muted); font-weight: 600; margin-bottom: 12px; }
+.sl-caption b { color: var(--ink-2); font-weight: 800; }
+.sl-heat { font-family: var(--font-mono); }
+.sl-na { color: var(--faint) !important; }
+.sl-grp-rs { color: var(--mint) !important; }
+.sl-grp-po { color: #F5B942 !important; }

@@ -552,31 +552,8 @@ function PlayerProfile({ name, seasons, onBack, onCompare }) {
         <div className="prof-section"><h2 className="prof-section-title">Career Constellation</h2><Constellation rs={rs} po={po} /></div>
 
         <div className="prof-section">
-          <h2 className="prof-section-title">Season Heatmap</h2>
-          <div className="heatmap-scroll">
-            <table className="heatmap">
-              <thead><tr>
-                <th className="hm-yr">Season</th><th className="hm-era">Era</th>
-                <th className="hm-cell">RS REIGN</th><th className="hm-cell">RS OFF</th><th className="hm-cell">RS DEF</th>
-                <th className="hm-div"></th>
-                <th className="hm-cell">PO REIGN</th><th className="hm-cell">PO OFF</th><th className="hm-cell">PO DEF</th>
-              </tr></thead>
-              <tbody>{heatRows.map(({ year, rs: r, po: p }) => (
-                <tr key={year}>
-                  <td className="hm-yr">{year}-{String(year+1).slice(-2)}</td>
-                  <td className="hm-era"><span className={`et e-${((r||p)?.era||'')[0]?.toLowerCase()}`}>{((r||p)?.era||'')[0]}</span></td>
-                  <HeatCell v={r?.reign} /><HeatCell v={r?.reign_off} type="off" /><HeatCell v={r?.reign_def} type="def" />
-                  <td className="hm-div"></td>
-                  <HeatCell v={p?.reign} /><HeatCell v={p?.reign_off} type="off" /><HeatCell v={p?.reign_def} type="def" />
-                </tr>
-              ))}</tbody>
-            </table>
-          </div>
-        </div>
-
-        <div className="prof-section">
           <div className="prof-section-header">
-            <h2 className="prof-section-title">Season Stats</h2>
+            <h2 className="prof-section-title">Season Log</h2>
           </div>
           <div className="st-toggles">
             <div className="st-toggle">
@@ -591,7 +568,7 @@ function PlayerProfile({ name, seasons, onBack, onCompare }) {
           {tableMode === 'rs-clutch' || tableMode === 'po-clutch' ? (
             <ClutchTable rows={tableMode === 'po-clutch' ? po : rs} isPO={tableMode === 'po-clutch'} />
           ) : (
-            <SeasonTable rows={tableMode === 'po' ? po : rs} />
+            <SeasonLog rs={rs} po={po} isPO={tableMode === 'po'} />
           )}
         </div>
       </div>
@@ -676,6 +653,48 @@ function ClutchPMCell({ v }) {
   const bg = clutchBg(v);
   const color = textColor(bg);
   return <td className="st-r" style={{background: bg, color, fontWeight: 900}}>{v >= 0 ? '+' : ''}{Number(v).toFixed(1)}</td>;
+}
+
+// Combined "Season Log": RS + PO REIGN/OFF/DEF heat cells at a glance, plus the
+// box scores for the toggled type (RS or PO).
+function SeasonLog({ rs, po, isPO }) {
+  const years = [...new Set([...rs, ...po].map(r => r.year))].sort((a, b) => a - b);
+  const rsByYr = Object.fromEntries(rs.map(r => [r.year, r]));
+  const poByYr = Object.fromEntries(po.map(r => [r.year, r]));
+  const Heat = ({ v, fn }) => {
+    if (v == null) return <td className="st-r sl-heat sl-na">—</td>;
+    const bg = fn(v);
+    return <td className="st-r sl-heat" style={{ background: bg, color: textColor(bg) }}>{v >= 0 ? '+' : ''}{v.toFixed(1)}</td>;
+  };
+  return (
+    <>
+      <p className="sl-caption">Colored cells = REIGN / OFF / DEF for <b>RS</b> and <b>PO</b> at a glance · box scores show <b>{isPO ? 'Playoffs' : 'Regular Season'}</b></p>
+      <div className="st-scroll"><table className="st">
+        <thead><tr>
+          <th>Season</th><th>Era</th>
+          <th className="st-r sl-grp-rs">RS R</th><th className="st-r sl-grp-rs">RS O</th><th className="st-r sl-grp-rs">RS D</th>
+          <th className="st-r sl-grp-po">PO R</th><th className="st-r sl-grp-po">PO O</th><th className="st-r sl-grp-po">PO D</th>
+          <th className="st-r">PPG</th><th className="st-r">RPG</th><th className="st-r">APG</th><th className="st-r">SPG</th><th className="st-r">BPG</th>
+          <th className="st-r">FG%</th><th className="st-r">3P%</th><th className="st-r">TS%</th><th className="st-r">GP</th>
+        </tr></thead>
+        <tbody>{years.map(y => {
+          const r = rsByYr[y], p = poByYr[y], a = isPO ? p : r, era = (r || p)?.era || '';
+          return (
+            <tr key={y} className="st-row">
+              <td className="st-yr">{y}-{String(y + 1).slice(-2)}</td>
+              <td><span className={`et e-${era[0]?.toLowerCase()}`}>{era[0]}</span></td>
+              <Heat v={r?.reign} fn={reignBg} /><Heat v={r?.reign_off} fn={offBg} /><Heat v={r?.reign_def} fn={defBg} />
+              <Heat v={p?.reign} fn={reignBg} /><Heat v={p?.reign_off} fn={offBg} /><Heat v={p?.reign_def} fn={defBg} />
+              <td className="st-r">{fS(a?.pts)}</td><td className="st-r">{fS(a?.reb)}</td><td className="st-r">{fS(a?.ast)}</td>
+              <td className="st-r">{fS(a?.stl)}</td><td className="st-r">{fS(a?.blk)}</td>
+              <td className="st-r">{fP(a?.fgp)}</td><td className="st-r">{fP(a?.fg3p)}</td><td className="st-r">{fP(a?.tsp)}</td>
+              <td className="st-r">{a?.gp ?? '—'}</td>
+            </tr>
+          );
+        })}</tbody>
+      </table></div>
+    </>
+  );
 }
 
 function SeasonTable({ rows }) {

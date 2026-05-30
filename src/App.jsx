@@ -10,6 +10,7 @@ const Players = lazy(() => import('./views/Players'));
 const Compare = lazy(() => import('./views/Compare'));
 const EraExplorer = lazy(() => import('./views/Eras'));
 const Visualizations = lazy(() => import('./views/Viz'));
+const Methodology = lazy(() => import('./views/Methodology'));
 
 function parseURL() {
   const params = new URLSearchParams(window.location.search);
@@ -57,6 +58,7 @@ export default function App() {
           {view === 'compare' && <Compare initialPlayer={comparePlayer} initialCompare={initialCompare} onClearInitial={() => { setComparePlayer(null); setInitialCompare(null); }} onPlayersChange={updateURL} />}
           {view === 'eras' && <EraExplorer />}
           {view === 'viz' && <Visualizations />}
+          {view === 'methodology' && <Methodology />}
         </Suspense>
       </main>
     </>
