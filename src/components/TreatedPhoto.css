@@ -1,0 +1,50 @@
+/* Duotone "photocopied" player photo. The image is desaturated + remapped to
+   ink-on-cream by the #reign-ink SVG filter; a faint halftone-dot overlay and a
+   1px ink frame finish the archival print look. */
+
+.tphoto {
+  position: relative;
+  display: inline-block;
+  overflow: hidden;
+  flex: none;
+  background: var(--paper-2, #ece2cd);
+  box-shadow: inset 0 0 0 1px rgba(33, 27, 18, 0.22);
+}
+
+.tphoto img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 12%; /* headshots sit high in frame */
+  filter: url(#reign-ink) contrast(1.04);
+}
+
+/* halftone grain: tiny ink dots multiplied over the photo */
+.tphoto::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(rgba(33, 27, 18, 0.55) 0.5px, transparent 0.6px);
+  background-size: 3px 3px;
+  mix-blend-mode: multiply;
+  opacity: 0.35;
+}
+
+.tphoto--crest {
+  background: var(--paper-2, #ece2cd);
+}
+.tphoto--crest svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* run the crest through the same ink filter so fallbacks match the photos */
+  filter: url(#reign-ink) contrast(1.02);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .tphoto img {
+    transition: filter 0.3s ease, transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+}

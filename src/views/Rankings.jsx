@@ -1,7 +1,7 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { formatReign } from '../utils/format';
 import { useJSON, useAllSeasons } from '../hooks/useData';
-import { PlayerCrest } from '../components/PlayerArt';
+import TreatedPhoto, { TreatmentDefs } from '../components/TreatedPhoto';
 import Loading from '../components/Loading';
 import './Rankings.css';
 
@@ -22,10 +22,54 @@ function clutchPMBg(v) { if(v==null)return'transparent';if(v>=4)return'#065f46';
 function relTsBg(v) { if(v==null)return'transparent';if(v>=10)return'#065f46';if(v>=5)return'#10B981';if(v>=2)return'#5DFDCB';if(v>=0)return'#a7f3d0';if(v>=-3)return'#fee2e2';return'#fca5a5'; }
 function needsDark(bg) { return['#5DFDCB','#a7f3d0','#d1fae5','#f0fdf4','#fde68a','#fef9c3','#fbbf24','#dbeafe','#7CC6FE','#fee2e2','#fca5a5','transparent'].includes(bg); }
 
+// Newsprint heat: encode magnitude as ink/gold *density* on paper rather than
+// a rainbow. Returns undefined (no fill) for null/negative so paper shows through.
+function reignTint(v) { if (v == null || v <= 0) return undefined; return `rgba(184,134,11,${Math.min(1, v / 28) * 0.24})`; }
+function offTint(v)   { if (v == null || v <= 0) return undefined; return `rgba(154,111,18,${Math.min(1, v / 22) * 0.2})`; }
+function defTint(v)   { if (v == null || v <= 0) return undefined; return `rgba(90,90,134,${Math.min(1, v / 10) * 0.2})`; }
+
 function HeatTd({ v, bgFn, children, cls }) {
   const bg = bgFn(v);
   const color = needsDark(bg) ? '#08090A' : '#fff';
   return <td className={cls || ''} style={{background: bg, color}}>{children}</td>;
+}
+
+// Masthead: a parallaxing wall of treated player faces dissolving into the page,
+// with the editorial headline laid over it.
+function RankingsHero({ wall }) {
+  const wallRef = useRef(null);
+
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    let raf = 0;
+    const onScroll = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        const el = wallRef.current;
+        if (el) el.style.transform = `translate3d(0, ${window.scrollY * 0.16}px, 0)`;
+      });
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  return (
+    <header className="rk-hero">
+      <TreatmentDefs />
+      <div className="rk-wall" ref={wallRef} aria-hidden="true">
+        {wall.map((p, i) => (
+          <div className="rk-wall-tile" key={`${p.name}-${i}`} style={{ '--i': i }}>
+            <TreatedPhoto name={p.name} team={p.team} peak={p.peak} size={170} />
+          </div>
+        ))}
+      </div>
+      <div className="rk-hero-veil" aria-hidden="true" />
+      <div className="rk-masthead">
+        <h1 className="rk-mark">Reign</h1>
+      </div>
+    </header>
+  );
 }
 
 export default function Rankings() {
@@ -181,19 +225,31 @@ export default function Rankings() {
     || (stretchPath && loadStretches)
     || (dataView === 'clutch' && clutchWindow === 'career' && loadCareerClutch);
 
+  // A de-duplicated wall of the current leaders' faces for the masthead backdrop.
+  const wall = useMemo(() => {
+    const seen = new Set();
+    const out = [];
+    for (const r of sorted) {
+      if (!r.name || seen.has(r.name)) continue;
+      seen.add(r.name);
+      out.push({
+        name: r.name,
+        team: r.team || (Array.isArray(r.teams) ? r.teams[0] : r.teams),
+        peak: r.reign || 0,
+      });
+      if (out.length >= 42) break;
+    }
+    return out;
+  }, [sorted]);
+
   const shown = sorted.slice(0, count);
   const windowLabel = window === '1yr' ? 'Single Season' : window === '3yr' ? '3-Year Stretch' : window === '5yr' ? '5-Year Stretch' : 'Career Average';
   const typeLabel = seasonType === 'RS' ? 'Regular Season' : 'Playoffs';
 
   return (
     <div className="rk">
+      <RankingsHero wall={wall} />
       <div className="rk-wrap">
-        <div className="rk-header">
-          <h1 className="rk-title">REIGN Leaderboard</h1>
-          <p className="rk-desc">
-            {sorted.length.toLocaleString()} entries · {typeLabel} · {windowLabel}
-          </p>
-        </div>
 
         <div className="rk-controls">
           <div className="ctrl-group">
@@ -293,7 +349,7 @@ export default function Rankings() {
                       </td>
                       <td className="t-name">
                         <span className="t-name-row">
-                          <PlayerCrest name={r.name} team={r.team || (r.teams || [])[0]} size={28} compact className="t-crest" />
+                          <TreatedPhoto name={r.name} team={r.team || (r.teams || [])[0]} peak={r.reign || 0} size={36} className="t-crest" />
                           <span className="t-name-txt"><strong className="pn">{r.name}</strong><span className="pt">{r.team}</span></span>
                         </span>
                       </td>
@@ -356,7 +412,7 @@ export default function Rankings() {
                       </td>
                       <td className="t-name">
                         <span className="t-name-row">
-                          <PlayerCrest name={r.name} team={r.team || (r.teams || [])[0]} size={28} compact className="t-crest" />
+                          <TreatedPhoto name={r.name} team={r.team || (r.teams || [])[0]} peak={r.reign || 0} size={36} className="t-crest" />
                           <span className="t-name-txt"><strong className="pn">{r.name}</strong><span className="pt">{r.team || (r.teams || []).slice(0,3).join(' · ')}</span></span>
                         </span>
                       </td>
@@ -366,9 +422,9 @@ export default function Rankings() {
                           <span key={e} className={`et e-${(e||'')[0]?.toLowerCase()}`}>{(e||'')[0]}</span>
                         ))}
                       </td>
-                      <HeatTd v={r.reign} bgFn={reignBg} cls="t-n t-reign-cell"><span className="reign-score">{formatReign(r.reign)}</span></HeatTd>
-                      <HeatTd v={r.off} bgFn={offBg} cls="t-n t-off">{formatReign(r.off)}</HeatTd>
-                      <HeatTd v={r.def} bgFn={defBg} cls="t-n t-def">{formatReign(r.def)}</HeatTd>
+                      <td className="t-n t-reign-cell" style={{ background: reignTint(r.reign) }}><span className="reign-score">{formatReign(r.reign)}</span></td>
+                      <td className="t-n t-off" style={{ background: offTint(r.off) }}>{formatReign(r.off)}</td>
+                      <td className="t-n t-def" style={{ background: defTint(r.def) }}>{formatReign(r.def)}</td>
                       <td className="t-n t-stat-v">{fmtStat(r.pts)}</td>
                       <td className="t-n t-stat-v">{fmtStat(r.reb)}</td>
                       <td className="t-n t-stat-v">{fmtStat(r.ast)}</td>
