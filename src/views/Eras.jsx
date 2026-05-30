@@ -55,71 +55,84 @@ function TopPlayers({ players, eraColor }) {
 
 /* ═══ ERA EVOLUTION CHART (SVG) ═══ */
 function EvolutionChart({ seasons, stat, label, unit, color, seasonType }) {
-  const yearData = useMemo(() => {
-    const byYear = {};
+  const [hover, setHover] = useState(null);
+  const { yearData, leaders } = useMemo(() => {
+    const norm = v => (stat === 'tsp' && v <= 1) ? v * 100 : v;
+    const byYear = {}, eraPeak = {};
     for (const s of seasons) {
       if (s.type !== (seasonType || 'RS') || (s.min || 0) < 15) continue;
-      const yr = s.year;
-      if (!byYear[yr]) byYear[yr] = [];
-      let val = s[stat] || 0;
-      if (stat === 'tsp' && val <= 1) val *= 100;
-      byYear[yr].push(val);
+      const val = norm(s[stat] || 0);
+      (byYear[s.year] ||= []).push(val);
+      if (val > 0 && (!eraPeak[s.era] || val > eraPeak[s.era].val)) eraPeak[s.era] = { val, name: s.name, year: s.year };
     }
-    return Object.entries(byYear).map(([yr, vals]) => ({
-      year: Number(yr),
-      avg: vals.reduce((a, b) => a + b, 0) / vals.length,
-    })).sort((a, b) => a.year - b.year);
+    const yearData = Object.entries(byYear).map(([yr, vals]) => ({ year: +yr, avg: vals.reduce((a, b) => a + b, 0) / vals.length })).sort((a, b) => a.year - b.year);
+    const leaders = ERAS.map(e => eraPeak[e.id] ? { ...eraPeak[e.id], color: e.color } : null).filter(Boolean);
+    return { yearData, leaders };
   }, [seasons, stat, seasonType]);
 
   if (yearData.length < 3) return null;
-  const W = 620, H = 210, PAD = { t: 22, r: 18, b: 36, l: 54 };
+  const W = 620, H = 252, PAD = { t: 58, r: 18, b: 36, l: 50 };
   const plotW = W - PAD.l - PAD.r, plotH = H - PAD.t - PAD.b;
   const vals = yearData.map(d => d.avg);
-  const minV = Math.min(...vals) * 0.9, maxV = Math.max(...vals) * 1.05;
-  const range = maxV - minV || 1;
-  const x = (yr) => PAD.l + ((yr - yearData[0].year) / (yearData[yearData.length - 1].year - yearData[0].year || 1)) * plotW;
-  const y = (v) => PAD.t + plotH - ((v - minV) / range) * plotH;
+  const minV = Math.min(...vals) * 0.92, maxV = Math.max(...vals) * 1.06, range = maxV - minV || 1;
+  const y0 = yearData[0].year, y1 = yearData[yearData.length - 1].year;
+  const x = yr => PAD.l + ((yr - y0) / (y1 - y0 || 1)) * plotW;
+  const y = v => PAD.t + plotH - ((v - minV) / range) * plotH;
+  const dec = stat === 'tsp' ? 0 : 1;
 
   const path = yearData.map(d => `${x(d.year)},${y(d.avg)}`).join(' ');
-  const areaPath = `${x(yearData[0].year)},${y(minV)} ${path} ${x(yearData[yearData.length - 1].year)},${y(minV)}`;
+  const areaPath = `${x(y0)},${y(minV)} ${path} ${x(y1)},${y(minV)}`;
+  const bands = ERAS.map(e => ({ x1: x(Math.max(e.years[0], y0)), x2: x(Math.min(e.years[1], y1)), color: e.color })).filter(b => b.x2 > b.x1);
 
-  // Era background bands
-  const eraBands = ERAS.map(era => ({
-    x1: x(Math.max(era.years[0], yearData[0].year)),
-    x2: x(Math.min(era.years[1], yearData[yearData.length - 1].year)),
-    color: era.color,
-  })).filter(b => b.x2 > b.x1);
+  const onMove = e => {
+    const r = e.currentTarget.getBoundingClientRect();
+    const vx = ((e.clientX - r.left) / r.width) * W;
+    const yr = Math.max(y0, Math.min(y1, Math.round(y0 + ((vx - PAD.l) / plotW) * (y1 - y0))));
+    const d = yearData.find(p => p.year === yr);
+    if (d) setHover({ d, px: e.clientX - r.left, py: e.clientY - r.top });
+  };
 
   return (
     <div className="era-evo-chart">
       <div className="era-evo-label">{label}</div>
-      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet">
-        <defs>
-          <linearGradient id={`evoFill_${stat}`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={color} stopOpacity="0.25" />
-            <stop offset="100%" stopColor={color} stopOpacity="0.02" />
-          </linearGradient>
-        </defs>
-        {/* Era bands */}
-        {eraBands.map((b, i) => (
-          <rect key={i} x={b.x1} y={PAD.t} width={b.x2 - b.x1} height={plotH} fill={b.color} opacity="0.06" />
-        ))}
-        {/* Grid lines */}
-        {[0.25, 0.5, 0.75].map(pct => {
-          const v = minV + range * pct;
-          return <line key={pct} x1={PAD.l} y1={y(v)} x2={W - PAD.r} y2={y(v)} stroke="rgba(135,137,192,0.1)" strokeWidth="1" />;
-        })}
-        {/* Area + line */}
-        <polygon points={areaPath} fill={`url(#evoFill_${stat})`} />
-        <polyline points={path} fill="none" stroke={color} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
-        {/* Y axis labels */}
-        <text x={PAD.l - 6} y={PAD.t + 6} textAnchor="end" fill="#8789C0" fontSize="13" fontWeight="900" fontFamily="var(--font-mono)">{(maxV).toFixed(stat === 'tsp' ? 0 : 1)}{unit}</text>
-        <text x={PAD.l - 6} y={H - PAD.b} textAnchor="end" fill="#8789C0" fontSize="13" fontWeight="900" fontFamily="var(--font-mono)">{(minV).toFixed(stat === 'tsp' ? 0 : 1)}{unit}</text>
-        {/* Decade labels */}
-        {yearData.filter(d => d.year % 10 === 0).map(d => (
-          <text key={d.year} x={x(d.year)} y={H - 8} textAnchor="middle" fill="#8789C0" fontSize="13" fontWeight="900" fontFamily="var(--font-mono)">{d.year}</text>
-        ))}
-      </svg>
+      <div className="era-evo-plot" onMouseMove={onMove} onMouseLeave={() => setHover(null)}>
+        <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet">
+          <defs>
+            <linearGradient id={`evoFill_${stat}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={color} stopOpacity="0.3" /><stop offset="100%" stopColor={color} stopOpacity="0.02" />
+            </linearGradient>
+            <filter id={`evoGlow_${stat}`}><feGaussianBlur stdDeviation="2.5" result="b" /><feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
+          </defs>
+          {bands.map((b, i) => <rect key={i} x={b.x1} y={PAD.t} width={b.x2 - b.x1} height={plotH} fill={b.color} opacity="0.06" />)}
+          {[0.25, 0.5, 0.75].map(pct => <line key={pct} x1={PAD.l} y1={y(minV + range * pct)} x2={W - PAD.r} y2={y(minV + range * pct)} stroke="rgba(135,137,192,0.1)" />)}
+          <polygon points={areaPath} fill={`url(#evoFill_${stat})`} />
+          <polyline points={path} fill="none" stroke={color} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+          {/* axis */}
+          <text x={PAD.l - 6} y={PAD.t + 6} textAnchor="end" fill="#8789C0" fontSize="12" fontWeight="800" fontFamily="var(--font-mono)">{maxV.toFixed(dec)}{unit}</text>
+          <text x={PAD.l - 6} y={H - PAD.b} textAnchor="end" fill="#8789C0" fontSize="12" fontWeight="800" fontFamily="var(--font-mono)">{minV.toFixed(dec)}{unit}</text>
+          {yearData.filter(d => d.year % 10 === 0).map(d => <text key={d.year} x={x(d.year)} y={H - 8} textAnchor="middle" fill="#8789C0" fontSize="12" fontWeight="800" fontFamily="var(--font-mono)">{d.year}</text>)}
+          {/* Era record-holders (top lane), with label collision-spreading */}
+          {(() => {
+            let lastX = -Infinity; const minGap = 98;
+            return [...leaders].sort((a, b) => a.year - b.year).map(L => {
+              let lx = Math.max(40, Math.min(W - 40, x(L.year)));
+              if (lx - lastX < minGap) lx = lastX + minGap;
+              lx = Math.min(W - 40, lx); lastX = lx;
+              return (
+                <g key={L.name + L.year}>
+                  <line x1={x(L.year)} y1={PAD.t} x2={lx} y2="44" stroke={L.color} strokeWidth="1" strokeDasharray="2 3" opacity="0.5" />
+                  <circle cx={lx} cy="44" r="3.5" fill={L.color} filter={`url(#evoGlow_${stat})`} />
+                  <text x={lx} y="18" textAnchor="middle" fontFamily="var(--font-mono)" fontSize="14" fontWeight="900" fill={L.color}>{L.val.toFixed(dec)}{unit}</text>
+                  <text x={lx} y="31" textAnchor="middle" fontFamily="var(--font-body)" fontSize="10.5" fontWeight="800" fill="#c9cdec">{L.name.split(' ').pop()} ’{String(L.year + 1).slice(-2)}</text>
+                </g>
+              );
+            });
+          })()}
+          {/* hover guide */}
+          {hover && <g pointerEvents="none"><line x1={x(hover.d.year)} y1={PAD.t} x2={x(hover.d.year)} y2={H - PAD.b} stroke="rgba(255,255,255,0.25)" /><circle cx={x(hover.d.year)} cy={y(hover.d.avg)} r="4" fill={color} stroke="#08090A" strokeWidth="1.5" /></g>}
+        </svg>
+        {hover && <div className="era-evo-tip" style={{ left: hover.px + 12, top: hover.py + 12 }}><b>{hover.d.year}-{String(hover.d.year + 1).slice(-2)}</b><span>league avg {hover.d.avg.toFixed(dec)}{unit}</span></div>}
+      </div>
     </div>
   );
 }
@@ -316,6 +329,7 @@ export default function EraExplorer() {
         {/* Evolution charts */}
         <div className="era-section">
           <h2 className="era-section-title" style={{ fontSize: '1.5rem' }}>How the Game Evolved</h2>
+          <p className="era-evo-sub">The line is the <b>league average</b> each year · the colored markers up top are <b>each era's single best season</b> for that stat. Hover the line to read any year.</p>
           <div className="era-evo-grid">
             <EvolutionChart seasons={seasons} seasonType={seasonType} stat="pts" label="Scoring (PPG)" unit="" color="#D97706" />
             <EvolutionChart seasons={seasons} seasonType={seasonType} stat="tsp" label="True Shooting %" unit="%" color="#10B981" />

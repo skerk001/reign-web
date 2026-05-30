@@ -100,3 +100,15 @@
 @media (max-width: 540px) {
   .era-timeline { grid-template-columns: 1fr; }
 }
+
+/* ── Evolution chart: leaders + hover ── */
+.era-evo-sub { font-size: 0.9rem; color: var(--muted); font-weight: 600; margin: -6px 0 16px; max-width: 720px; line-height: 1.5; }
+.era-evo-sub b { color: var(--ink-2); font-weight: 800; }
+.era-evo-plot { position: relative; }
+.era-evo-tip {
+  position: absolute; z-index: 10; pointer-events: none;
+  background: rgba(8,9,10,0.97); border: 1px solid var(--line-2); border-radius: 8px;
+  padding: 7px 10px; display: flex; flex-direction: column; gap: 1px; box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+}
+.era-evo-tip b { font-size: 0.84rem; color: var(--ink); font-weight: 800; }
+.era-evo-tip span { font-family: var(--font-mono); font-size: 0.74rem; color: var(--ink-2); font-weight: 700; }
