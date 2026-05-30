@@ -2,7 +2,7 @@
 
 > Quantifying NBA player impact across 80 years of basketball using era-specific composite models.
 
-![Top 15 All-Time](docs/figures/fig2_top15_peak.png)
+![REIGN Leaderboard](docs/figures/screenshot_home.png)
 
 ## Research Paper
 
