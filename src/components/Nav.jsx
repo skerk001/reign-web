@@ -1,3 +1,4 @@
+import CrownLogo from './CrownLogo';
 import './Nav.css';
 
 const VIEWS = [
@@ -14,11 +15,7 @@ export default function Nav({ view, setView }) {
     <nav className="nav">
       <div className="nav-inner">
         <button className="nav-brand" onClick={() => setView('rankings')}>
-          <svg className="crown" viewBox="0 0 24 20" fill="none">
-            <path d="M1.5 16L4.5 4.5L9 10.5L12 1L15 10.5L19.5 4.5L22.5 16H1.5Z"
-                  fill="currentColor" opacity="0.15" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
-            <rect x="1.5" y="16" width="21" height="2.5" rx="1" fill="currentColor" opacity="0.4"/>
-          </svg>
+          <CrownLogo className="crown" />
           <span className="brand-text">REIGN</span>
           <span className="brand-sub">NBA Analytics</span>
         </button>

@@ -28,9 +28,15 @@
 }
 
 .crown {
-  width: 22px;
-  height: 18px;
-  color: var(--gold);
+  display: block;
+  width: 30px;
+  height: 28px;
+  filter: drop-shadow(0 1px 5px rgba(245,185,66,0.35));
+  transition: transform 0.18s ease, filter 0.18s ease;
+}
+.nav-brand:hover .crown {
+  transform: translateY(-1px) rotate(-3deg);
+  filter: drop-shadow(0 2px 9px rgba(245,185,66,0.55));
 }
 
 .brand-text {
@@ -92,7 +98,7 @@
 @media (max-width: 480px) {
   .nav-inner { gap: 6px; padding: 0 10px; }
   .brand-text { font-size: 0.95rem; letter-spacing: 1px; }
-  .crown { width: 18px; height: 15px; }
+  .crown { width: 23px; height: 21px; }
   .nav-tab { padding: 5px 8px; font-size: 0.68rem; }
   .nav-tabs { gap: 1px; }
 }

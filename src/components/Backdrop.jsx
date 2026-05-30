@@ -55,6 +55,30 @@ export default function Backdrop() {
         </g>
       </svg>
 
+      {/* Constellation of legends — faint stars wired into a crown (REIGN) */}
+      <svg className="bd-crown" viewBox="0 0 400 230" preserveAspectRatio="xMidYMid meet">
+        <g stroke="var(--gold)" strokeWidth="1" fill="none"
+           strokeLinejoin="round" strokeLinecap="round" opacity="0.22">
+          <path d="M40 190 L52 58 L130 128 L200 26 L270 128 L348 58 L360 190 Z" />
+          <path d="M40 190 L360 190" />
+        </g>
+        <g className="bd-crown-stars" fill="var(--ink)">
+          {/* peak tips — brighter */}
+          <circle cx="52" cy="58" r="2.6" className="bd-twk" />
+          <circle cx="200" cy="26" r="3.2" fill="var(--mint)" className="bd-twk" />
+          <circle cx="348" cy="58" r="2.6" className="bd-twk" />
+          {/* valleys + base corners */}
+          <circle cx="130" cy="128" r="1.8" className="bd-twk" />
+          <circle cx="270" cy="128" r="1.8" className="bd-twk" />
+          <circle cx="40" cy="190" r="2.1" fill="var(--gold)" className="bd-twk" />
+          <circle cx="360" cy="190" r="2.1" fill="var(--gold)" className="bd-twk" />
+          {/* band gems */}
+          <circle cx="200" cy="190" r="1.6" className="bd-twk" />
+          <circle cx="120" cy="190" r="1.3" className="bd-twk" />
+          <circle cx="280" cy="190" r="1.3" className="bd-twk" />
+        </g>
+      </svg>
+
       {/* Giant faint three-point arc + center circle, anchored bottom-center */}
       <svg className="bd-court" viewBox="0 0 1200 600" preserveAspectRatio="xMidYMax slice">
         <g fill="none" stroke="var(--mint)" strokeWidth="1.5" opacity="0.10">

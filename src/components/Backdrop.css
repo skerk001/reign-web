@@ -57,6 +57,23 @@
 .bd-orb-c { animation-duration: 27s; animation-delay: -12s; }
 .bd-orb-d { animation-duration: 33s; animation-delay: -3s; }
 
+/* Crown constellation — subtle, upper-center */
+.bd-crown {
+  width: min(440px, 46vw);
+  height: auto;
+  inset: auto;
+  left: 50%;
+  top: 11%;
+  transform: translateX(-50%);
+  opacity: 0.55;
+}
+.bd-crown-stars circle { filter: drop-shadow(0 0 3px rgba(245,185,66,0.5)); }
+.bd-twk { animation: bdTwinkle 6s ease-in-out infinite; }
+.bd-crown-stars circle:nth-child(2) { animation-delay: -1s; }
+.bd-crown-stars circle:nth-child(4) { animation-delay: -2s; }
+.bd-crown-stars circle:nth-child(6) { animation-delay: -3s; }
+.bd-crown-stars circle:nth-child(8) { animation-delay: -4s; }
+
 /* Court geometry */
 .bd-court { width: 100%; height: 70%; top: auto; bottom: 0; }
 
@@ -78,5 +95,5 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .bd-aurora, .bd-stars-1, .bd-stars-2, .bd-orb { animation: none; }
+  .bd-aurora, .bd-stars-1, .bd-stars-2, .bd-orb, .bd-twk { animation: none; }
 }
