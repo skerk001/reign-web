@@ -63,6 +63,15 @@ All scores are era-normalized via z-score within rolling 5-year windows, ensurin
 
 ![League Evolution](docs/figures/fig3_league_evolution.png)
 
+## Design & Graphics
+
+REIGN ships with a custom dark visual identity — built from scratch, no stock templates or image assets.
+
+- **Cosmic Court backdrop** — Every page sits on a layered, GPU-cheap art layer (`src/components/Backdrop.jsx`) instead of flat black: drifting gold/mint aurora, a tiled twinkling starfield, floating basketball "orb" stars with hand-drawn seams, a faint *constellation of legends* wired into a crown shape, and a giant ghosted three-point arc anchoring the bottom. It's composed entirely of CSS gradients + inline SVG (zero image downloads), and all motion is disabled under `prefers-reduced-motion`.
+- **Crown mark** — The REIGN logo (`src/components/CrownLogo.jsx`) is a gold-gradient crown whose center jewel is a basketball, with mint/gold gems on the band. It renders in the nav on every view and doubles as the browser favicon (`public/favicon.svg`).
+- **Palette** — Near-black `#08090A` base, REIGN gold `#F5B942`, mint `#5DFDCB`, plus per-era accent colors (Pioneer / Legacy / Classic / Modern). All design tokens live in `src/index.css`.
+- **Typography** — Source Serif 4 (display), IBM Plex Sans (body), IBM Plex Mono (data/numbers).
+
 ## Tech Stack
 
 - React 19 + Vite 7
@@ -72,22 +81,34 @@ All scores are era-normalized via z-score within rolling 5-year windows, ensurin
 - Fuzzy player search (accent-tolerant, typo-friendly)
 - html2canvas for PNG export (lazy-loaded)
 
-## Development
+## Run Locally
+
+**Prerequisites:** [Node.js](https://nodejs.org) 20.19+ or 22.12+ and npm.
 
 ```bash
+# 1. Clone the repo and enter it
+git clone https://github.com/skerk001/reign-web.git
+cd reign-web
+
+# 2. Install dependencies
 npm install
+
+# 3. Start the dev server (hot reload)
 npm run dev
 ```
+
+Vite prints a local URL — open **http://localhost:5173** in your browser. The page hot-reloads as you edit. All season data is served statically from `public/data/`, so no backend or API keys are required.
 
 ## Build and Deploy
 
 ```bash
-npm run build
+npm run build     # bundles to dist/
+npm run preview   # serves the built dist/ at http://localhost:4173
 ```
 
-Output goes to `dist/`. Works with Vercel, Netlify, or any static hosting.
+Output goes to `dist/` and works with Vercel, Netlify, or any static host.
 
-**Vercel (recommended):** Push to GitHub, import in Vercel, deploy. No config needed.
+**Vercel / Netlify (recommended):** Push to GitHub, import the repo, deploy. No config needed.
 
 ## Data
 
@@ -104,8 +125,14 @@ Additional: `awards.json`, `stretches_rs3/rs5/po3/po5.json`, `career_avg_rs/po.j
 
 ## Scripts
 
-- `scripts/regenerate_careers.py` — Rebuild careers.json from seasons.json
-- `scripts/generate_paper.py` — Generate the methodology PDF
+| Command | What it does |
+|---------|--------------|
+| `npm run dev` | Start the Vite dev server with hot reload |
+| `npm run build` | Build the production bundle to `dist/` |
+| `npm run preview` | Serve the built `dist/` locally |
+| `npm run build:rankings` | Regenerate the rankings search index (`scripts/build_rankings_index.js`) |
+| `npm run build:viz` | Regenerate precomputed visualization data (`scripts/build_viz.js`) |
+| `npm run lint` | Run ESLint over the project |
 
 ## License
 
