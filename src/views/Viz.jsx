@@ -95,8 +95,15 @@ function LeagueEvolution({ data }) {
   const W = 1000, H = 360, P = { t: 24, r: 52, b: 38, l: 48 };
   const y0 = data[0].year, y1 = data[data.length - 1].year;
   const xs = yr => P.l + ((yr - y0) / (y1 - y0 || 1)) * (W - P.l - P.r);
-  const tsY = v => P.t + (1 - (v - 44) / 16) * (H - P.t - P.b);
-  const ppY = v => P.t + (1 - (v - 6) / 8) * (H - P.t - P.b);
+  // Data-driven y-domains (padded) so neither line ever clips off the plot.
+  const padRange = arr => { const mn = Math.min(...arr), mx = Math.max(...arr), r = (mx - mn) || 1; return [mn - r * 0.1, mx + r * 0.1]; };
+  const [tsLo, tsHi] = padRange(data.map(d => d.avgTS));
+  const [ppLo, ppHi] = padRange(data.map(d => d.avgPPG));
+  const tsY = v => P.t + (1 - (v - tsLo) / (tsHi - tsLo)) * (H - P.t - P.b);
+  const ppY = v => P.t + (1 - (v - ppLo) / (ppHi - ppLo)) * (H - P.t - P.b);
+  const mkTicks = (lo, hi, step) => { const o = []; for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) o.push(v); return o; };
+  const tsTicks = mkTicks(tsLo, tsHi, (tsHi - tsLo) > 22 ? 10 : 5);
+  const ppTicks = mkTicks(ppLo, ppHi, 2);
   const tsPath = data.map(d => `${xs(d.year).toFixed(1)},${tsY(d.avgTS).toFixed(1)}`).join(' ');
   const ppPath = data.map(d => `${xs(d.year).toFixed(1)},${ppY(d.avgPPG).toFixed(1)}`).join(' ');
   const bands = [['Pioneer', 1946, 1962], ['Legacy', 1963, 1995], ['Classic', 1996, 2012], ['Modern', 2013, 2026]];
@@ -111,8 +118,8 @@ function LeagueEvolution({ data }) {
       <div className="vchart" onMouseMove={onMove} onMouseLeave={() => setHi(null)}>
         <svg viewBox={`0 0 ${W} ${H}`} className="vsvg">
           {bands.map(([era, a, b]) => <rect key={era} x={xs(Math.max(a, y0))} y={P.t} width={xs(Math.min(b, y1)) - xs(Math.max(a, y0))} height={H - P.t - P.b} fill={EC[era]} opacity={0.07} />)}
-          {[46, 50, 54, 58].map(v => <g key={v}><line x1={P.l} y1={tsY(v)} x2={W - P.r} y2={tsY(v)} stroke="rgba(135,137,192,0.1)" /><text x={P.l - 8} y={tsY(v) + 4} textAnchor="end" className="vaxis" fill={MINT}>{v}</text></g>)}
-          {[8, 10, 12].map(v => <text key={v} x={W - P.r + 8} y={ppY(v) + 4} className="vaxis" fill={GOLD}>{v}</text>)}
+          {tsTicks.map(v => <g key={v}><line x1={P.l} y1={tsY(v)} x2={W - P.r} y2={tsY(v)} stroke="rgba(135,137,192,0.1)" /><text x={P.l - 8} y={tsY(v) + 4} textAnchor="end" className="vaxis" fill={MINT}>{v}</text></g>)}
+          {ppTicks.map(v => <text key={v} x={W - P.r + 8} y={ppY(v) + 4} className="vaxis" fill={GOLD}>{v}</text>)}
           {bands.map(([era, a]) => a >= y0 && a <= y1 && <text key={era} x={xs(a) + 4} y={P.t + 13} className="vband">{era}</text>)}
           <polyline points={ppPath} fill="none" stroke={GOLD} strokeWidth="3" strokeLinejoin="round" />
           <polyline points={tsPath} fill="none" stroke={MINT} strokeWidth="3" strokeLinejoin="round" />
