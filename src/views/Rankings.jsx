@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { formatReign } from '../utils/format';
-import { useJSON } from '../hooks/useData';
+import { useJSON, useAllSeasons } from '../hooks/useData';
 import Loading from '../components/Loading';
 import './Rankings.css';
 
@@ -38,7 +38,6 @@ export default function Rankings() {
   const [dataView, setDataView] = useState('standard'); // standard | clutch
 
   // Load data based on toggles
-  const seasonPath = '/data/seasons.json';
   const careerClutchPath = '/data/career_clutch.json';
   const stretchPath = window === '3yr'
     ? `/data/stretches_${seasonType.toLowerCase()}3.json`
@@ -48,7 +47,7 @@ export default function Rankings() {
     ? `/data/career_avg_${seasonType.toLowerCase()}.json`
     : null;
 
-  const { data: seasons, loading: loadSeasons } = useJSON(seasonPath);
+  const { data: seasons, loading: loadSeasons } = useAllSeasons();
   const { data: stretches, loading: loadStretches } = useJSON(stretchPath);
   const { data: careerClutch, loading: loadCareerClutch } = useJSON(careerClutchPath);
   const [clutchWindow, setClutchWindow] = useState('season'); // season | career
