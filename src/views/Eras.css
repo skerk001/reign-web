@@ -1,99 +1,91 @@
-.eras { min-height: calc(100vh - var(--nav-height)); background: #F4FAFF; }
+.eras { min-height: calc(100vh - var(--nav-height)); background: var(--bg); }
 .eras-wrap { max-width: var(--max-width); margin: 0 auto; padding: 0 var(--pad) 60px; }
 
 /* ═══ HEADER ═══ */
-.eras-header { padding: 32px 0 18px; border-bottom: 4px solid #08090A; }
-.eras-title { font-family: var(--font-display); font-size: 3rem; font-weight: 800; color: #08090A; letter-spacing: -1px; }
-.eras-desc { font-size: 0.95rem; color: #8789C0; margin-top: 6px; font-weight: 600; }
+.eras-header { padding: 32px 0 18px; border-bottom: 1px solid var(--line); }
+.eras-title { font-family: var(--font-display); font-size: 3rem; font-weight: 800; color: var(--ink); letter-spacing: -1px; }
+.eras-desc { font-size: 0.95rem; color: var(--muted); margin-top: 6px; font-weight: 600; }
 
-/* ═══ ERA TIMELINE CARDS ═══ */
+/* ═══ ERA TIMELINE CARDS (Viz era-card style) ═══ */
 .era-timeline { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 28px 0 16px; }
 
 .era-card {
-  background: #fff; border: 2px solid #e2eaf2; border-top: 5px solid #e2eaf2;
-  border-radius: 12px; padding: 18px 16px 14px; cursor: pointer;
-  transition: all 0.18s; text-align: left; font-family: var(--font-body);
-  display: flex; flex-direction: column; gap: 10px; position: relative;
+  position: relative; overflow: hidden;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 16px;
+  padding: 18px 16px 14px; cursor: pointer; transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+  text-align: left; font-family: var(--font-body); display: flex; flex-direction: column; gap: 10px;
 }
-.era-card:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
-.era-card-active { border-color: transparent; box-shadow: 0 4px 24px rgba(0,0,0,0.12); transform: translateY(-3px); }
+.era-card::before {
+  content: ''; position: absolute; top: -45%; right: -35%; width: 75%; height: 90%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--ec) 55%, transparent), transparent 68%);
+  opacity: 0.4; pointer-events: none;
+}
+.era-card:hover { transform: translateY(-4px); border-color: color-mix(in srgb, var(--ec) 55%, transparent); box-shadow: 0 14px 34px -12px color-mix(in srgb, var(--ec) 45%, transparent); }
+.era-card-active { border-color: var(--ec); box-shadow: 0 14px 34px -12px color-mix(in srgb, var(--ec) 55%, transparent); transform: translateY(-3px); }
 
 .era-card-badge {
   width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center;
-  font-family: var(--font-display); font-size: 1.1rem; font-weight: 900; color: #fff;
+  font-family: var(--font-display); font-size: 1.1rem; font-weight: 900; color: #08090A; position: relative; z-index: 1;
 }
+.era-card-info { position: relative; z-index: 1; }
 .era-card-name { font-family: var(--font-display); font-size: 1.3rem; font-weight: 900; line-height: 1.1; }
-.era-card-years { font-family: var(--font-mono); font-size: 0.88rem; font-weight: 700; color: #8789C0; margin-top: 2px; }
-.era-card-tagline { font-size: 0.85rem; font-weight: 700; color: #b0b4d0; font-style: italic; margin-top: 2px; }
-.era-card-stats { display: flex; gap: 12px; margin-top: 4px; }
-.era-card-stat { font-size: 0.75rem; font-weight: 800; color: #4a4d60; }
+.era-card-years { font-family: var(--font-mono); font-size: 0.88rem; font-weight: 700; color: var(--muted); margin-top: 2px; }
+.era-card-tagline { font-size: 0.85rem; font-weight: 700; color: var(--faint); font-style: italic; margin-top: 2px; }
+.era-card-stats { display: flex; gap: 12px; margin-top: 4px; position: relative; z-index: 1; }
+.era-card-stat { font-size: 0.75rem; font-weight: 800; color: var(--ink-2); }
 .era-card-stat strong { font-family: var(--font-mono); font-size: 0.88rem; }
 
 /* ═══ ERA DETAIL VIEW ═══ */
 .era-detail {
-  background: #fff; border: 2px solid #e2eaf2; border-left: 5px solid #e2eaf2;
-  border-radius: 14px; padding: 28px 28px 24px; margin-top: 8px;
-  animation: eraSlideIn 0.25s ease;
+  background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--line);
+  border-radius: 14px; padding: 28px 28px 24px; margin-top: 8px; animation: eraSlideIn 0.25s ease;
 }
 @keyframes eraSlideIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
 .era-detail-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; margin-bottom: 24px; flex-wrap: wrap; }
 .era-detail-title { font-family: var(--font-display); font-size: 2rem; font-weight: 900; letter-spacing: -0.5px; }
-.era-detail-desc { font-size: 1.05rem; color: #4a4d60; font-weight: 600; line-height: 1.6; max-width: 640px; margin-top: 8px; }
+.era-detail-desc { font-size: 1.05rem; color: var(--ink-2); font-weight: 600; line-height: 1.6; max-width: 640px; margin-top: 8px; }
 
-.era-detail-peak { text-align: center; background: #f5f9fd; border-radius: 12px; padding: 16px 24px; min-width: 180px; }
-.era-peak-label { font-size: 0.65rem; font-weight: 900; color: #8789C0; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 6px; }
-.era-peak-name { font-family: var(--font-display); font-size: 1.1rem; font-weight: 900; color: #08090A; }
+.era-detail-peak { text-align: center; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px 24px; min-width: 180px; }
+.era-peak-label { font-size: 0.65rem; font-weight: 900; color: var(--muted); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 8px; }
+.era-peak-crest { display: block; margin: 0 auto 8px; }
+.era-peak-name { font-family: var(--font-display); font-size: 1.1rem; font-weight: 900; color: var(--ink); }
 .era-peak-reign { font-family: var(--font-mono); font-size: 2rem; font-weight: 900; line-height: 1.1; }
-.era-peak-year { font-family: var(--font-mono); font-size: 0.88rem; font-weight: 700; color: #8789C0; }
+.era-peak-year { font-family: var(--font-mono); font-size: 0.88rem; font-weight: 700; color: var(--muted); }
 
 /* ═══ SECTIONS ═══ */
 .era-section { padding: 20px 0; }
-.era-section-title { font-family: var(--font-display); font-size: 1.3rem; font-weight: 900; color: #08090A; margin-bottom: 14px; }
+.era-section-title { font-family: var(--font-display); font-size: 1.3rem; font-weight: 900; color: var(--ink); margin-bottom: 14px; }
 
 /* ═══ TOP PLAYERS LIST ═══ */
 .era-top-players { display: flex; flex-direction: column; gap: 2px; }
-.era-tp-row {
-  display: flex; align-items: center; gap: 12px; padding: 10px 14px;
-  border-radius: 8px; transition: background 0.1s;
-  font-variant-numeric: tabular-nums;
-}
-.era-tp-row:hover { background: #f5f9fd; }
-.era-tp-top3 { background: #fafcff; }
-.era-tp-rank { flex: 0 0 36px; font-family: var(--font-mono); font-size: 0.95rem; font-weight: 900; color: #b0b4d0; text-align: center; }
-.era-tp-name { flex: 1; font-size: 1.15rem; font-weight: 900; color: #08090A; }
-.era-tp-year { flex: 0 0 70px; font-family: var(--font-mono); font-size: 0.82rem; font-weight: 700; color: #8789C0; }
+.era-tp-row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 8px; transition: background 0.1s; font-variant-numeric: tabular-nums; }
+.era-tp-row:hover { background: rgba(255,255,255,0.03); }
+.era-tp-top3 { background: rgba(255,255,255,0.022); }
+.era-tp-rank { flex: 0 0 36px; font-family: var(--font-mono); font-size: 0.95rem; font-weight: 900; color: var(--faint); text-align: center; }
+.era-tp-name { flex: 1; font-size: 1.15rem; font-weight: 900; color: var(--ink); }
+.era-tp-year { flex: 0 0 70px; font-family: var(--font-mono); font-size: 0.82rem; font-weight: 700; color: var(--muted); }
 .era-tp-reign { flex: 0 0 70px; font-family: var(--font-mono); font-size: 1.2rem; font-weight: 900; text-align: right; }
-.era-tp-stats { flex: 0 0 140px; font-family: var(--font-mono); font-size: 0.8rem; font-weight: 700; color: #4a4d60; text-align: right; }
+.era-tp-stats { flex: 0 0 140px; font-family: var(--font-mono); font-size: 0.8rem; font-weight: 700; color: var(--ink-2); text-align: right; }
 
 /* ═══ COMPARISON TABLE ═══ */
 .era-comp-table-wrap { overflow-x: auto; }
 .era-comp-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
-.era-comp-table thead th { background: #08090A; padding: 14px 12px; text-align: center; }
+.era-comp-table thead th { background: #0d0f13; padding: 14px 12px; text-align: center; border-bottom: 2px solid var(--mint); }
 .era-ct-header { font-size: 0.95rem; font-weight: 900; }
-.era-ct-years { display: block; font-family: var(--font-mono); font-size: 0.7rem; font-weight: 700; color: rgba(250,248,245,0.4); margin-top: 2px; }
-.era-ct-label {
-  font-size: 0.92rem; font-weight: 900; color: #8789C0; text-transform: uppercase;
-  letter-spacing: 0.5px; padding: 12px 14px; text-align: left; white-space: nowrap;
-  background: #f5f9fd;
-}
-.era-ct-val {
-  text-align: center; padding: 12px; font-family: var(--font-mono);
-  font-size: 1.25rem; font-weight: 900; color: #4a4d60;
-  border-bottom: 1px solid #f0f4f8;
-}
+.era-ct-years { display: block; font-family: var(--font-mono); font-size: 0.7rem; font-weight: 700; color: var(--faint); margin-top: 2px; }
+.era-ct-label { font-size: 0.92rem; font-weight: 900; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; padding: 12px 14px; text-align: left; white-space: nowrap; background: rgba(255,255,255,0.03); }
+.era-ct-val { text-align: center; padding: 12px; font-family: var(--font-mono); font-size: 1.25rem; font-weight: 900; color: var(--ink-2); border-bottom: 1px solid var(--line); }
 .era-ct-best { font-size: 1.2rem; }
 
 /* ═══ EVOLUTION CHARTS ═══ */
 .era-evo-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(480px, 1fr)); gap: 16px; }
-.era-evo-chart {
-  background: #fff; border: 2px solid #e2eaf2; border-radius: 12px; padding: 16px 14px 12px;
-}
-.era-evo-label { font-family: var(--font-display); font-size: 1.15rem; font-weight: 900; color: #08090A; margin-bottom: 8px; }
+.era-evo-chart { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px 14px 12px; }
+.era-evo-label { font-family: var(--font-display); font-size: 1.15rem; font-weight: 900; color: var(--ink); margin-bottom: 8px; }
 .era-evo-chart svg { width: 100%; height: auto; }
 
 /* ═══ STAT BAR ═══ */
-.era-stat-bar-track { height: 6px; background: #f0f4f8; border-radius: 3px; overflow: hidden; }
+.era-stat-bar-track { height: 6px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden; }
 .era-stat-bar-fill { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
 
 /* ═══ RESPONSIVE ═══ */

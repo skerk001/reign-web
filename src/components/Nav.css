@@ -1,10 +1,10 @@
 .nav {
-  background: var(--bg-nav);
+  background: #0b0c0e;
   height: var(--nav-height);
   position: sticky;
   top: 0;
   z-index: 100;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+  border-bottom: 1px solid var(--line);
 }
 
 .nav-inner {
@@ -30,21 +30,21 @@
 .crown {
   width: 22px;
   height: 18px;
-  color: var(--reign-gold-light);
+  color: var(--gold);
 }
 
 .brand-text {
   font-family: var(--font-display);
   font-size: 1.5rem;
   font-weight: 800;
-  color: var(--reign-gold-light);
+  color: var(--gold);
   letter-spacing: 4px;
 }
 
 .brand-sub {
   font-size: 0.65rem;
   font-weight: 500;
-  color: rgba(250,248,245,0.4);
+  color: var(--faint);
   letter-spacing: 0.5px;
   margin-left: 4px;
   align-self: flex-end;
@@ -62,7 +62,7 @@
 .nav-tab {
   background: none;
   border: none;
-  color: rgba(250,248,245,0.45);
+  color: var(--muted);
   font-family: var(--font-body);
   font-size: 0.9rem;
   font-weight: 700;
@@ -74,13 +74,13 @@
 }
 
 .nav-tab:hover {
-  color: rgba(250,248,245,0.85);
+  color: var(--ink);
   background: rgba(255,255,255,0.06);
 }
 
 .nav-tab.active {
-  color: var(--reign-gold-light);
-  background: rgba(184,134,11,0.15);
+  color: var(--mint);
+  background: rgba(93,253,203,0.12);
 }
 
 @media (max-width: 800px) {

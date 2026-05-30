@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { formatReign } from '../utils/format';
 import { useJSON, useAllSeasons } from '../hooks/useData';
+import { PlayerCrest } from '../components/PlayerArt';
 import Loading from '../components/Loading';
 import './Eras.css';
 
@@ -112,8 +113,8 @@ function EvolutionChart({ seasons, stat, label, unit, color, seasonType }) {
         <polygon points={areaPath} fill={`url(#evoFill_${stat})`} />
         <polyline points={path} fill="none" stroke={color} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
         {/* Y axis labels */}
-        <text x={PAD.l - 6} y={PAD.t + 6} textAnchor="end" fill="#4a4d60" fontSize="13" fontWeight="900" fontFamily="var(--font-mono)">{(maxV).toFixed(stat === 'tsp' ? 0 : 1)}{unit}</text>
-        <text x={PAD.l - 6} y={H - PAD.b} textAnchor="end" fill="#4a4d60" fontSize="13" fontWeight="900" fontFamily="var(--font-mono)">{(minV).toFixed(stat === 'tsp' ? 0 : 1)}{unit}</text>
+        <text x={PAD.l - 6} y={PAD.t + 6} textAnchor="end" fill="#8789C0" fontSize="13" fontWeight="900" fontFamily="var(--font-mono)">{(maxV).toFixed(stat === 'tsp' ? 0 : 1)}{unit}</text>
+        <text x={PAD.l - 6} y={H - PAD.b} textAnchor="end" fill="#8789C0" fontSize="13" fontWeight="900" fontFamily="var(--font-mono)">{(minV).toFixed(stat === 'tsp' ? 0 : 1)}{unit}</text>
         {/* Decade labels */}
         {yearData.filter(d => d.year % 10 === 0).map(d => (
           <text key={d.year} x={x(d.year)} y={H - 8} textAnchor="middle" fill="#8789C0" fontSize="13" fontWeight="900" fontFamily="var(--font-mono)">{d.year}</text>
@@ -205,6 +206,9 @@ export default function EraExplorer() {
         peakReign: peak.reign,
         peakPlayer: peak.name,
         peakYear: peak.year,
+        peakTeam: peak.team,
+        peakOff: peak.reign_off,
+        peakDef: peak.reign_def,
         players: new Set(filtered.map(r => r.name)).size,
         seasonCount: n,
       };
@@ -254,10 +258,10 @@ export default function EraExplorer() {
               <button key={era.id}
                 className={`era-card${isActive ? ' era-card-active' : ''}`}
                 onClick={() => setSelectedEra(isActive ? null : era.id)}
-                style={{ borderTopColor: era.color }}>
+                style={{ '--ec': era.color }}>
                 <div className="era-card-badge" style={{ background: era.color }}>{era.id[0]}</div>
                 <div className="era-card-info">
-                  <div className="era-card-name" style={{ color: isActive ? era.color : '#08090A' }}>{era.name}</div>
+                  <div className="era-card-name" style={{ color: isActive ? era.color : 'var(--ink)' }}>{era.name}</div>
                   <div className="era-card-years">{era.years[0]}–{era.years[1]}</div>
                   <div className="era-card-tagline">{era.tagline}</div>
                 </div>
@@ -282,6 +286,11 @@ export default function EraExplorer() {
               </div>
               <div className="era-detail-peak">
                 <div className="era-peak-label">Era's Greatest Season</div>
+                {eraStats[activeEra.id]?.peakTeam && (
+                  <PlayerCrest name={eraStats[activeEra.id].peakPlayer} team={eraStats[activeEra.id].peakTeam}
+                    off={eraStats[activeEra.id].peakOff} def={eraStats[activeEra.id].peakDef} peak={eraStats[activeEra.id].peakReign}
+                    size={52} className="era-peak-crest" />
+                )}
                 <div className="era-peak-name">{eraStats[activeEra.id]?.peakPlayer}</div>
                 <div className="era-peak-reign" style={{ color: activeEra.color }}>
                   {formatReign(eraStats[activeEra.id]?.peakReign)}
