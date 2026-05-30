@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { formatReign } from '../utils/format';
 import { useJSON, useAllSeasons } from '../hooks/useData';
 import { PlayerCrest } from '../components/PlayerArt';
+import EraBadge from '../components/EraBadge';
 import Loading from '../components/Loading';
 import './Eras.css';
 
@@ -272,7 +273,7 @@ export default function EraExplorer() {
                 className={`era-card${isActive ? ' era-card-active' : ''}`}
                 onClick={() => setSelectedEra(isActive ? null : era.id)}
                 style={{ '--ec': era.color }}>
-                <div className="era-card-badge" style={{ background: era.color }}>{era.id[0]}</div>
+                <EraBadge era={era.id} size={34} />
                 <div className="era-card-info">
                   <div className="era-card-name" style={{ color: isActive ? era.color : 'var(--ink)' }}>{era.name}</div>
                   <div className="era-card-years">{era.years[0]}–{era.years[1]}</div>

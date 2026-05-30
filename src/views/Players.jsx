@@ -5,6 +5,7 @@ import { useJSON, useAllSeasons } from '../hooks/useData';
 import { PlayerCrest, CareerSkyline } from '../components/PlayerArt';
 import { Constellation, StatBloom } from '../components/PlayerCharts';
 import { reignBg, offBg, defBg, needsDark, relTsBg, clutchBg, clutchPctBg, textColor } from '../utils/heatmap';
+import EraBadge from '../components/EraBadge';
 import Loading from '../components/Loading';
 import './Players.css';
 
@@ -499,7 +500,7 @@ function PlayerProfile({ name, seasons, onBack, onCompare }) {
               <h1 className="prof-name">{name}</h1>
               <div className="prof-meta">
                 {teams.join(' · ')} · {years} · {rs.length} RS{po.length > 0 && ` + ${po.length} PO`} seasons
-                <span className="prof-eras">{eras.map(e => <span key={e} className={`et e-${e[0].toLowerCase()}`}>{e}</span>)}</span>
+                <span className="prof-eras">{eras.map(e => <EraBadge key={e} era={e} size={20} />)}</span>
               </div>
             </div>
           </div>
@@ -682,7 +683,7 @@ function SeasonLog({ rs, po, isPO }) {
           return (
             <tr key={y} className="st-row">
               <td className="st-yr">{y}-{String(y + 1).slice(-2)}</td>
-              <td><span className={`et e-${era[0]?.toLowerCase()}`}>{era[0]}</span></td>
+              <td><EraBadge era={era} size={18} /></td>
               <Heat v={r?.reign} fn={reignBg} /><Heat v={r?.reign_off} fn={offBg} /><Heat v={r?.reign_def} fn={defBg} />
               <Heat v={p?.reign} fn={reignBg} /><Heat v={p?.reign_off} fn={offBg} /><Heat v={p?.reign_def} fn={defBg} />
               <td className="st-r">{fS(a?.pts)}</td><td className="st-r">{fS(a?.reb)}</td><td className="st-r">{fS(a?.ast)}</td>
@@ -739,7 +740,7 @@ function SeasonTable({ rows }) {
         <tr key={i} className="st-row">
           <td className="st-yr">{r.year}-{String(r.year+1).slice(-2)}</td>
           <td className="st-tm">{r.team}</td>
-          <td><span className={`et e-${(r.era||'')[0]?.toLowerCase()}`}>{(r.era||'')[0]}</span></td>
+          <td><EraBadge era={r.era} size={18} /></td>
           <td className="st-r st-reign" style={{background: rBg, color: rClr}}>{formatReign(r.reign)}</td>
           <td className="st-r st-off-v" style={{background: oBg, color: oClr}}>{formatReign(r.reign_off)}</td>
           <td className="st-r st-def-v" style={{background: dBg, color: dClr}}>{formatReign(r.reign_def)}</td>

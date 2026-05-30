@@ -152,11 +152,7 @@
 .yr-range { font-size: 1rem; color: var(--ink-2); font-weight: 700; }
 
 /* ═══ ERA TAGS ═══ */
-.et { display: inline-block; font-size: 0.58rem; font-weight: 900; width: 20px; height: 20px; line-height: 20px; text-align: center; border-radius: 5px; margin-right: 2px; }
-.e-p { background: #DAA520; color: #08090A; }
-.e-l { background: #8789C0; color: #08090A; }
-.e-c { background: #10B981; color: #08090A; }
-.e-m { background: #EF4444; color: #fff; }
+/* Era indicators now use the <EraBadge> component (src/components/EraBadge.jsx). */
 
 /* ═══ REIGN SCORE ═══ */
 .t-reign-cell { position: relative; }

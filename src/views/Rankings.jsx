@@ -4,6 +4,7 @@ import { useJSON, useAllSeasons } from '../hooks/useData';
 import { PlayerCrest } from '../components/PlayerArt';
 import { reignBg, offBg, defBg, relTsBg, needsDark, clutchBg as clutchPMBg } from '../utils/heatmap';
 import HeatLegend from '../components/HeatLegend';
+import EraBadge from '../components/EraBadge';
 import Loading from '../components/Loading';
 import './Rankings.css';
 
@@ -313,7 +314,7 @@ export default function Rankings() {
                         </span>
                       </td>
                       <td className="t-yrs"><span className="yr-range">{r.yr_label}</span></td>
-                      <td className="t-era">{(r.eras || [r.era]).map(e => <span key={e} className={`et e-${(e||'')[0]?.toLowerCase()}`}>{(e||'')[0]}</span>)}</td>
+                      <td className="t-era">{(r.eras || [r.era]).map(e => <EraBadge key={e} era={e} size={20} />)}</td>
                       <td className="t-n t-reign-cell" style={{background: totPtsBg, color: needsDark(totPtsBg)?'#08090A':'#fff'}}>{r.clutch_tot_pts != null ? r.clutch_tot_pts.toFixed(0) : '—'}</td>
                       <td className="t-n" style={{background: totPmBg, color: needsDark(totPmBg)?'#08090A':'#fff'}}>{r.clutch_tot_pm != null ? (r.clutch_tot_pm >= 0 ? '+' : '') + r.clutch_tot_pm.toFixed(0) : '—'}</td>
                       <td className="t-n t-stat-v">{fmtStat(r.clutch_pts)}</td>
@@ -378,7 +379,7 @@ export default function Rankings() {
                       <td className="t-yrs"><span className="yr-range">{r.yr_label}</span></td>
                       <td className="t-era">
                         {(r.eras || [r.era]).map(e => (
-                          <span key={e} className={`et e-${(e||'')[0]?.toLowerCase()}`}>{(e||'')[0]}</span>
+                          <EraBadge key={e} era={e} size={20} />
                         ))}
                       </td>
                       <HeatTd v={r.reign} bgFn={reignBg} cls="t-n t-reign-cell"><span className="reign-score">{formatReign(r.reign)}</span></HeatTd>
