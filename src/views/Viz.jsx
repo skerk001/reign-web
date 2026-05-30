@@ -2,12 +2,15 @@ import { useState, useRef, useMemo } from 'react';
 import Loading from '../components/Loading';
 import { formatReign } from '../utils/format';
 import { useJSON } from '../hooks/useData';
+import { PlayerCrest } from '../components/PlayerArt';
 import './Viz.css';
 
 const EC = { Pioneer: '#8789C0', Legacy: '#D97706', Classic: '#2563EB', Modern: '#10B981' };
 const ERAS = ['Pioneer', 'Legacy', 'Classic', 'Modern'];
 const ERA_DESC = { Pioneer: 'The birth of basketball', Legacy: 'The golden age of individual greatness', Classic: 'The dead-ball ISO era', Modern: 'Analytics & positionless basketball' };
 const MINT = '#5DFDCB', GOLD = '#F5B942';
+
+const ecGlow = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`; };
 
 // Map a pointer event to viewBox coordinates for a scaled SVG.
 function vbPoint(e, vbW, vbH) {
@@ -47,15 +50,28 @@ export default function Visualizations() {
 
         <div className="era-cards">
           {viz.eraCards[seasonType].map(c => (
-            <div key={c.era} className="era-card" style={{ '--ec': EC[c.era] }}>
-              <div className="ec-era">{c.era}</div>
-              <div className="ec-years">{c.years[0]}–{c.years[1]}</div>
+            <div key={c.era} className="era-card" style={{ '--ec': EC[c.era], '--ecg': ecGlow(EC[c.era], 0.5) }}>
+              <div className="ec-top">
+                <div>
+                  <div className="ec-era">{c.era}</div>
+                  <div className="ec-years">{c.years[0]}–{c.years[1]}</div>
+                </div>
+                {c.best && (
+                  <div className="ec-reign">
+                    <span className="ec-reign-val">{formatReign(c.best.reign)}</span>
+                    <span className="ec-reign-lbl">Peak REIGN</span>
+                  </div>
+                )}
+              </div>
               <div className="ec-desc">{ERA_DESC[c.era]}</div>
               {c.best && (
                 <div className="ec-best">
-                  <span className="ec-best-label">Best Season</span>
-                  <span className="ec-best-name">{c.best.name} '{String(c.best.year + 1).slice(-2)}</span>
-                  <span className="ec-best-reign">{formatReign(c.best.reign)}</span>
+                  <PlayerCrest name={c.best.name} team={c.best.team} off={c.best.off} def={c.best.def} peak={c.best.reign} size={46} className="ec-crest" />
+                  <div className="ec-best-info">
+                    <span className="ec-best-label">Era's Finest</span>
+                    <span className="ec-best-name">{c.best.name}</span>
+                    <span className="ec-best-sub">{c.best.team} · '{String(c.best.year + 1).slice(-2)}</span>
+                  </div>
                 </div>
               )}
               <div className="ec-meta"><span>{c.players} players</span><span>Avg TS {c.avgTS}%</span></div>

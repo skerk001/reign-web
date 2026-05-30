@@ -9,18 +9,35 @@
 /* ── Era summary cards ── */
 .era-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin: 24px 0; }
 .era-card {
-  background: linear-gradient(160deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01));
-  border: 1px solid rgba(135,137,192,0.16); border-top: 3px solid var(--ec); border-radius: 14px;
-  padding: 18px; display: flex; flex-direction: column; gap: 7px;
+  position: relative; overflow: hidden;
+  background: linear-gradient(165deg, rgba(255,255,255,0.05), rgba(255,255,255,0.012));
+  border: 1px solid rgba(135,137,192,0.16); border-radius: 16px;
+  padding: 18px; display: flex; flex-direction: column; gap: 12px;
+  transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
 }
-.ec-era { font-family: var(--font-display); font-size: 1.3rem; font-weight: 900; color: var(--ec); }
-.ec-years { font-size: 0.86rem; font-weight: 700; color: #8789C0; }
-.ec-desc { font-size: 0.8rem; font-weight: 600; color: #6f7290; font-style: italic; }
-.ec-best { margin-top: 6px; padding-top: 10px; border-top: 1px solid rgba(135,137,192,0.14); display: flex; flex-direction: column; gap: 2px; }
-.ec-best-label { font-size: 0.64rem; font-weight: 800; color: #6f7290; text-transform: uppercase; letter-spacing: 1.5px; }
-.ec-best-name { font-size: 1rem; font-weight: 800; color: #eef0fb; }
-.ec-best-reign { font-family: var(--font-mono); font-size: 1.55rem; font-weight: 900; color: #5DFDCB; }
-.ec-meta { display: flex; justify-content: space-between; font-size: 0.78rem; font-weight: 700; color: #6f7290; margin-top: auto; padding-top: 8px; }
+.era-card::before {
+  content: ''; position: absolute; top: -45%; right: -35%; width: 75%; height: 90%;
+  background: radial-gradient(circle, var(--ecg), transparent 68%);
+  opacity: 0.5; pointer-events: none;
+}
+.era-card:hover { transform: translateY(-4px); border-color: var(--ecg); box-shadow: 0 14px 34px -12px var(--ecg); }
+.ec-top { display: flex; justify-content: space-between; align-items: flex-start; position: relative; z-index: 1; }
+.ec-era { font-family: var(--font-display); font-size: 1.32rem; font-weight: 900; color: var(--ec); line-height: 1; }
+.ec-years { font-size: 0.76rem; font-weight: 700; color: #8789C0; margin-top: 5px; }
+.ec-reign { display: flex; flex-direction: column; align-items: flex-end; }
+.ec-reign-val { font-family: var(--font-mono); font-size: 1.95rem; font-weight: 900; color: var(--ec); line-height: 0.9; }
+.ec-reign-lbl { font-size: 0.58rem; font-weight: 800; color: #6f7290; text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; }
+.ec-desc { font-size: 0.78rem; font-weight: 600; color: #6f7290; font-style: italic; position: relative; z-index: 1; }
+.ec-best {
+  display: flex; align-items: center; gap: 11px; padding: 11px 12px; border-radius: 12px;
+  background: rgba(0,0,0,0.28); border: 1px solid rgba(135,137,192,0.1); position: relative; z-index: 1;
+}
+.ec-crest { filter: drop-shadow(0 3px 9px var(--ecg)); }
+.ec-best-info { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
+.ec-best-label { font-size: 0.58rem; font-weight: 800; color: var(--ec); text-transform: uppercase; letter-spacing: 1.3px; }
+.ec-best-name { font-size: 0.98rem; font-weight: 800; color: #eef0fb; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ec-best-sub { font-family: var(--font-mono); font-size: 0.72rem; font-weight: 700; color: #8789C0; }
+.ec-meta { display: flex; justify-content: space-between; font-size: 0.74rem; font-weight: 700; color: #6f7290; margin-top: auto; padding-top: 2px; position: relative; z-index: 1; }
 
 /* ── Controls ── */
 .viz-controls { display: flex; gap: 14px; padding: 4px 0 22px; flex-wrap: wrap; align-items: center; }

@@ -28,7 +28,7 @@ function eraCards(type) {
     const ts = d.map(r => r.tsp || 0).filter(v => v > 0);
     return {
       era, years: ERA_YEARS[era],
-      best: best ? { name: best.name, reign: round(best.reign, 2), year: best.year } : null,
+      best: best ? { name: best.name, reign: round(best.reign, 2), year: best.year, team: best.team, off: round(best.reign_off, 2), def: round(best.reign_def, 2) } : null,
       avgTS: round(ts.length ? pct(ts.reduce((a, b) => a + b, 0) / ts.length) : 0),
       players: new Set(d.map(r => r.name)).size,
       seasons: d.length,
