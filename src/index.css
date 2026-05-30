@@ -52,6 +52,21 @@
   --nav-height: 58px;
   --max-width: 1360px;
   --pad: 20px;
+
+  /* ── Dark theme (REIGN v2) — shared surface/ink/accent tokens ── */
+  --bg: #08090A;
+  --surface: linear-gradient(165deg, rgba(255,255,255,0.05), rgba(255,255,255,0.012));
+  --surface-2: rgba(255,255,255,0.05);
+  --panel: rgba(0,0,0,0.28);
+  --ink: #f4f6ff;
+  --ink-2: #c9cdec;
+  --muted: #8789C0;
+  --faint: #6f7290;
+  --line: rgba(135,137,192,0.16);
+  --line-2: rgba(135,137,192,0.28);
+  --mint: #5DFDCB;
+  --gold: #F5B942;
+  --ec-pioneer: #8789C0; --ec-legacy: #D97706; --ec-classic: #2563EB; --ec-modern: #10B981;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -64,10 +79,13 @@ html {
 
 body {
   font-family: var(--font-body);
-  background: var(--bg-page);
-  color: var(--text-primary);
+  background: var(--bg);
+  color: var(--ink);
   line-height: 1.5;
 }
+
+::-webkit-scrollbar-track { background: #0d0f13; }
+::-webkit-scrollbar-thumb { background: rgba(135,137,192,0.3); }
 
 #root {
   min-height: 100vh;

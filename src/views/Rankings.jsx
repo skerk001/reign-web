@@ -257,6 +257,25 @@ export default function Rankings() {
           </div>
         </div>
 
+        {dataView === 'standard' && shown.length >= 3 && (
+          <div className="rk-podium">
+            {shown.slice(0, 3).map((r, i) => (
+              <div className={`pod pod-${i + 1}`} key={`${r.name}-${r.yr_label}-pod`}>
+                <span className="pod-medal">{i + 1}</span>
+                <PlayerCrest name={r.name} team={r.team || (r.teams || [])[0]} off={r.off} def={r.def} peak={r.reign} size={44} />
+                <div className="pod-info">
+                  <span className="pod-name">{r.name}</span>
+                  <span className="pod-sub">{r.team || (r.teams || []).slice(0, 2).join(' · ')} · {r.yr_label}</span>
+                </div>
+                <div className="pod-reign">
+                  <span className="pod-reign-val">{formatReign(r.reign)}</span>
+                  <span className="pod-reign-lbl">REIGN</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className="rk-table-scroll">
           {dataView === 'clutch' ? (
             <table className="t">
