@@ -48,14 +48,19 @@ function fetchAllSeasons() {
   return allSeasonsPromise;
 }
 
-export function useAllSeasons() {
+// `enabled` lets callers defer the (large) era-file fetch until it's needed —
+// e.g. Rankings only loads full seasons when the Clutch single-season view is
+// active, since the Standard view uses the slim /data/rankings.json index.
+export function useAllSeasons(enabled = true) {
   const [data, setData] = useState(allSeasonsCache);
-  const [loading, setLoading] = useState(!allSeasonsCache);
+  const [loading, setLoading] = useState(enabled && !allSeasonsCache);
 
   useEffect(() => {
+    if (!enabled) return;
     if (allSeasonsCache) { setData(allSeasonsCache); setLoading(false); return; }
+    setLoading(true);
     fetchAllSeasons().then(d => { setData(d); setLoading(false); });
-  }, []);
+  }, [enabled]);
 
   return { data, loading };
 }

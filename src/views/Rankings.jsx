@@ -36,6 +36,8 @@ export default function Rankings() {
   const [sortDir, setSortDir] = useState('desc');
   const [count, setCount] = useState(100);
   const [dataView, setDataView] = useState('standard'); // standard | clutch
+  const [clutchWindow, setClutchWindow] = useState('season'); // season | career
+  const [clutchSort, setClutchSort] = useState('totals'); // totals | averages
 
   // Load data based on toggles
   const careerClutchPath = '/data/career_clutch.json';
@@ -47,11 +49,14 @@ export default function Rankings() {
     ? `/data/career_avg_${seasonType.toLowerCase()}.json`
     : null;
 
-  const { data: seasons, loading: loadSeasons } = useAllSeasons();
+  // Standard leaderboard uses the slim /data/rankings.json index; the full era
+  // files (with clutch_*/advanced fields) are fetched only for the Clutch
+  // single-season view — keeping the landing download ~69% smaller.
+  const needFullSeasons = dataView === 'clutch' && clutchWindow === 'season';
+  const { data: rankingsIndex, loading: loadIndex } = useJSON('/data/rankings.json');
+  const { data: fullSeasons, loading: loadFull } = useAllSeasons(needFullSeasons);
   const { data: stretches, loading: loadStretches } = useJSON(stretchPath);
   const { data: careerClutch, loading: loadCareerClutch } = useJSON(careerClutchPath);
-  const [clutchWindow, setClutchWindow] = useState('season'); // season | career
-  const [clutchSort, setClutchSort] = useState('totals'); // totals | averages
 
   const rows = useMemo(() => {
     // Clutch view
@@ -81,9 +86,9 @@ export default function Rankings() {
       }
       
       // Single season clutch view
-      if (!seasons) return [];
+      if (!fullSeasons) return [];
       const isRS = seasonType === 'RS';
-      let list = seasons.filter(r => r.type === seasonType);
+      let list = fullSeasons.filter(r => r.type === seasonType);
       list = list.filter(r => isRS ? r.clutch_pm != null : r.po_clutch_pm != null);
       if (era !== 'All') list = list.filter(r => r.era === era);
       if (search.trim()) { const q = search.toLowerCase(); list = list.filter(r => r.name.toLowerCase().includes(q)); }
@@ -104,8 +109,8 @@ export default function Rankings() {
     }
 
     if (window === '1yr') {
-      if (!seasons) return [];
-      let list = seasons.filter(r => r.type === seasonType);
+      if (!rankingsIndex) return [];
+      let list = rankingsIndex.filter(r => r.type === seasonType);
       if (era !== 'All') list = list.filter(r => r.era === era);
       if (search.trim()) {
         const q = search.toLowerCase();
@@ -153,7 +158,7 @@ export default function Rankings() {
         fgp: r.avg_fgp, fg3p: r.avg_fg3p, tsp: r.avg_tsp,
       }));
     }
-  }, [seasons, stretches, careerClutch, seasonType, window, era, search, stretchPath, dataView, clutchWindow]);
+  }, [rankingsIndex, fullSeasons, stretches, careerClutch, seasonType, window, era, search, stretchPath, dataView, clutchWindow]);
 
   const handleSort = (col) => {
     if (sortCol === col) { setSortDir(d => d === 'desc' ? 'asc' : 'desc'); }
@@ -170,7 +175,10 @@ export default function Rankings() {
     return list;
   }, [rows, effectiveSortCol, sortDir]);
 
-  const loading = loadSeasons || (stretchPath && loadStretches) || (dataView === 'clutch' && clutchWindow === 'career' && loadCareerClutch);
+  const loading = (dataView === 'standard' && window === '1yr' && loadIndex)
+    || (needFullSeasons && loadFull)
+    || (stretchPath && loadStretches)
+    || (dataView === 'clutch' && clutchWindow === 'career' && loadCareerClutch);
 
   const shown = sorted.slice(0, count);
   const windowLabel = window === '1yr' ? 'Single Season' : window === '3yr' ? '3-Year Stretch' : window === '5yr' ? '5-Year Stretch' : 'Career Average';
