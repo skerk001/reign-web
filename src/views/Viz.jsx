@@ -144,7 +144,7 @@ function OffDefScatter({ data, eraFilter }) {
   return (
     <Card span="wide" title="Offense vs Defense" desc="Every elite season (REIGN ≥ 10) placed by its two-way profile. Top-right = complete superstars.">
       <div className="vchart" onMouseLeave={() => setHi(null)}>
-        <svg viewBox={`0 0 ${W} ${H}`} className="vsvg" onMouseMove={e => hi && setHi({ ...hi, ...((p) => ({ px: p.px, py: p.py }))(vbPoint(e, W, H)) })}>
+        <svg viewBox={`0 0 ${W} ${H}`} className="vsvg">
           <rect x={xs(12)} y={ys(yMax)} width={xs(xMax) - xs(12)} height={ys(3) - ys(yMax)} fill={MINT} opacity={0.05} />
           <line x1={xs(12)} y1={P.t} x2={xs(12)} y2={H - P.b} stroke="rgba(135,137,192,0.25)" strokeDasharray="4 4" />
           <line x1={P.l} y1={ys(3)} x2={W - P.r} y2={ys(3)} stroke="rgba(135,137,192,0.25)" strokeDasharray="4 4" />
@@ -152,7 +152,7 @@ function OffDefScatter({ data, eraFilter }) {
           {[0, 4, 8].map(v => <text key={v} x={P.l - 8} y={ys(v) + 4} textAnchor="end" className="vaxis">{v}</text>)}
           <text x={W - P.r} y={H - 14} textAnchor="end" className="vaxislbl">OFF REIGN →</text>
           <text x={P.l - 8} y={P.t + 4} className="vaxislbl">DEF ↑</text>
-          {pts.map((d, i) => <circle key={i} cx={xs(d.off)} cy={ys(d.def)} r={hi?.d === d ? 7 : 4.2} fill={EC[d.era]} opacity={hi && hi.d !== d ? 0.3 : 0.78} onMouseEnter={e => setHi({ d, ...vbPoint(e, W, H) })} style={{ transition: 'r .1s' }} />)}
+          {pts.map((d, i) => <circle key={i} cx={xs(d.off)} cy={ys(d.def)} r={hi?.d === d ? 7 : 4.2} fill={EC[d.era]} opacity={hi && hi.d !== d ? 0.3 : 0.78} onMouseEnter={e => setHi({ d, ...vbPoint(e, W, H) })} onMouseLeave={() => setHi(null)} style={{ transition: 'r .1s' }} />)}
           <text x={xs(17)} y={ys(9)} className="vquad">ELITE TWO-WAY</text>
           <text x={xs(17)} y={ys(0.5)} className="vquad">OFFENSIVE STAR</text>
           <text x={xs(2)} y={ys(9)} className="vquad">DEFENSIVE ANCHOR</text>
