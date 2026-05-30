@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import Backdrop from './components/Backdrop';
 import Nav from './components/Nav';
 import Loading from './components/Loading';
 import Rankings from './views/Rankings';
@@ -50,6 +51,7 @@ export default function App() {
 
   return (
     <>
+      <Backdrop />
       <Nav view={view} setView={setView} />
       <main>
         <Suspense fallback={<Loading />}>
