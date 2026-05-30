@@ -103,6 +103,15 @@ a:hover { text-decoration: underline; }
 /* Tabular numbers for all data */
 .tnum { font-variant-numeric: tabular-nums; }
 
+/* ── Heatmap legend ── */
+.heat-legend { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 12px 0 4px; }
+.hl-cap { font-size: 0.7rem; font-weight: 800; color: var(--faint); text-transform: uppercase; letter-spacing: 1px; }
+.hl-item { display: inline-flex; align-items: center; gap: 7px; }
+.hl-label { font-size: 0.66rem; font-weight: 800; letter-spacing: 1px; color: var(--muted); text-transform: uppercase; }
+.hl-bar { width: 64px; height: 9px; border-radius: 5px; border: 1px solid var(--line); }
+.hl-note { font-size: 0.7rem; color: var(--faint); font-weight: 600; }
+.hl-neg { display: inline-block; width: 10px; height: 10px; border-radius: 3px; background: #3b2327; vertical-align: middle; margin: 0 2px; }
+
 /* ── Shared segmented toggle (Viz + Eras) ── */
 .vc-toggle { display: inline-flex; gap: 4px; background: var(--surface-2); border-radius: 10px; padding: 4px; }
 .vc-btn { padding: 9px 18px; border-radius: 8px; border: none; background: none; font-family: var(--font-body); font-size: 0.9rem; font-weight: 800; color: var(--muted); cursor: pointer; transition: all 0.12s; }

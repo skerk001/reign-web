@@ -4,31 +4,14 @@ import { fuzzySearch } from '../utils/fuzzySearch';
 import { useJSON, useAllSeasons } from '../hooks/useData';
 import { PlayerCrest, CareerSkyline } from '../components/PlayerArt';
 import { Constellation, StatBloom } from '../components/PlayerCharts';
+import { reignBg, offBg, defBg, needsDark, relTsBg, clutchBg, clutchPctBg, textColor } from '../utils/heatmap';
 import Loading from '../components/Loading';
 import './Players.css';
 
-// Warm-toned cell color for clutch heatmap (subtle, site-matching)
-function clutchHeat(pct) {
-  if (pct == null) return 'transparent';
-  if (pct >= 90) return '#92400e'; // deep amber
-  if (pct >= 80) return '#D97706'; // amber
-  if (pct >= 70) return '#fbbf24'; // gold
-  if (pct >= 60) return '#fde68a'; // light gold
-  if (pct >= 40) return '#fef9c3'; // cream
-  if (pct >= 20) return '#f0f4f8'; // neutral
-  return '#fee2e2'; // light red (cold)
-}
-function clutchTextColor(pct) {
-  if (pct == null) return '#b0b4d0';
-  if (pct >= 80) return '#fff';
-  if (pct >= 60) return '#08090A';
-  return '#4a4d60';
-}
-
 function ClutchCell({ v, pct, fmt, suffix = '' }) {
   if (v == null) return <td className="cf-cell cf-na">—</td>;
-  const bg = clutchHeat(pct);
-  const color = clutchTextColor(pct);
+  const bg = clutchPctBg(pct);
+  const color = textColor(bg);
   let display = v;
   if (fmt === 'pm') display = (v >= 0 ? '+' : '') + Number(v).toFixed(1);
   else if (fmt === '1') display = Number(v).toFixed(1);
@@ -43,8 +26,8 @@ function ClutchCell({ v, pct, fmt, suffix = '' }) {
 function TsDiffCell({ v }) {
   if (v == null) return <td className="cf-cell cf-na">—</td>;
   const num = Number(v);
-  const bg = num >= 10 ? '#065f46' : num >= 5 ? '#10B981' : num >= 2 ? '#5DFDCB' : num >= 0 ? '#a7f3d0' : num >= -3 ? '#fee2e2' : '#fca5a5';
-  const color = (bg === '#5DFDCB' || bg === '#a7f3d0' || bg === '#fee2e2' || bg === '#fca5a5') ? '#08090A' : '#fff';
+  const bg = relTsBg(num);
+  const color = textColor(bg);
   return (
     <td className="cf-cell" style={{ background: bg, color, fontWeight: 900 }}>
       {num > 0 ? '+' : ''}{v}
@@ -622,10 +605,6 @@ function HeatCell({ v, type }) {
   const color = needsDark(bg) ? '#08090A' : '#fff';
   return <td className="hm-cell" style={{ background: bg, color }}><span className="hm-val">{v >= 0 ? '+' : ''}{v.toFixed(1)}</span></td>;
 }
-function reignBg(v) { if(v>=25)return'#065f46';if(v>=20)return'#10B981';if(v>=15)return'#5DFDCB';if(v>=10)return'#a7f3d0';if(v>=5)return'#d1fae5';if(v>=0)return'#f0fdf4';return'#fee2e2'; }
-function offBg(v) { if(v>=18)return'#92400e';if(v>=14)return'#D97706';if(v>=10)return'#fbbf24';if(v>=6)return'#fde68a';if(v>=0)return'#fef9c3';return'#fee2e2'; }
-function defBg(v) { if(v>=8)return'#1e40af';if(v>=5)return'#3b82f6';if(v>=3)return'#7CC6FE';if(v>=0)return'#dbeafe';return'#fee2e2'; }
-function needsDark(bg) { return['#5DFDCB','#a7f3d0','#d1fae5','#f0fdf4','#fde68a','#fef9c3','#fbbf24','#dbeafe','#7CC6FE','#fee2e2'].includes(bg); }
 
 function ClutchTable({ rows, isPO }) {
   const [sortKey, setSortKey] = useState(null);
@@ -694,8 +673,8 @@ function ClutchTable({ rows, isPO }) {
 
 function ClutchPMCell({ v }) {
   if (v == null) return <td className="st-r">—</td>;
-  const bg = v >= 4 ? '#065f46' : v >= 2.5 ? '#10B981' : v >= 1 ? '#5DFDCB' : v >= 0 ? '#a7f3d0' : v >= -1 ? '#fee2e2' : '#fca5a5';
-  const color = (bg === '#5DFDCB' || bg === '#a7f3d0' || bg === '#fee2e2' || bg === '#fca5a5') ? '#08090A' : '#fff';
+  const bg = clutchBg(v);
+  const color = textColor(bg);
   return <td className="st-r" style={{background: bg, color, fontWeight: 900}}>{v >= 0 ? '+' : ''}{Number(v).toFixed(1)}</td>;
 }
 

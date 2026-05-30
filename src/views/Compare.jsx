@@ -4,6 +4,7 @@ import { fuzzySearch } from '../utils/fuzzySearch';
 import { useJSON, useAllSeasons } from '../hooks/useData';
 import { PlayerCrest } from '../components/PlayerArt';
 import { StatBloom } from '../components/PlayerCharts';
+import { reignBg, offBg, defBg, needsDark } from '../utils/heatmap';
 import Loading from '../components/Loading';
 import './Compare.css';
 
@@ -28,10 +29,6 @@ const POPULAR_COMPARISONS = [
 ];
 
 /* ═══ HEATMAP COLORS (from existing pages — REIGN green / OFF amber / DEF blue) ═══ */
-function reignBg(v) { if(v==null)return'transparent';if(v>=25)return'#065f46';if(v>=20)return'#10B981';if(v>=15)return'#5DFDCB';if(v>=10)return'#a7f3d0';if(v>=5)return'#d1fae5';if(v>=0)return'#f0fdf4';return'#fee2e2'; }
-function offBg(v) { if(v==null)return'transparent';if(v>=18)return'#92400e';if(v>=14)return'#D97706';if(v>=10)return'#fbbf24';if(v>=6)return'#fde68a';if(v>=0)return'#fef9c3';return'#fee2e2'; }
-function defBg(v) { if(v==null)return'transparent';if(v>=8)return'#1e40af';if(v>=5)return'#3b82f6';if(v>=3)return'#7CC6FE';if(v>=0)return'#dbeafe';return'#fee2e2'; }
-function needsDark(bg) { return['#5DFDCB','#a7f3d0','#d1fae5','#f0fdf4','#fde68a','#fef9c3','#fbbf24','#dbeafe','#7CC6FE','#fee2e2','#fca5a5','transparent'].includes(bg); }
 
 /* ═══ PLAYER SEARCH SLOT ═══ */
 function PlayerSlot({ index, selectedName, allNames, allPlayerPeaks, onSelect, onClear }) {
