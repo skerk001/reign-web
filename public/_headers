@@ -1,0 +1,5 @@
+# Netlify headers. Data files have stable (non-hashed) names, so we use a short
+# max-age + stale-while-revalidate: repeat visits reuse instantly and revalidate
+# in the background. The service worker also caches these (stale-while-revalidate).
+/data/*
+  Cache-Control: public, max-age=3600, stale-while-revalidate=86400
