@@ -1,11 +1,15 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import Nav from './components/Nav';
+import Loading from './components/Loading';
 import Rankings from './views/Rankings';
-import Players from './views/Players';
-import Compare from './views/Compare';
-import EraExplorer from './views/Eras';
-import Visualizations from './views/Viz';
 import './index.css';
+
+// Lazy-load non-landing views so the initial bundle ships only Rankings + React.
+// recharts (Viz) and the large Compare/Players views load on demand per tab.
+const Players = lazy(() => import('./views/Players'));
+const Compare = lazy(() => import('./views/Compare'));
+const EraExplorer = lazy(() => import('./views/Eras'));
+const Visualizations = lazy(() => import('./views/Viz'));
 
 function parseURL() {
   const params = new URLSearchParams(window.location.search);
@@ -47,11 +51,13 @@ export default function App() {
     <>
       <Nav view={view} setView={setView} />
       <main>
-        {view === 'rankings' && <Rankings onPlayerClick={n => { setPlayer(n); setView('player'); }} />}
-        {view === 'player' && <Players initialPlayer={player} onCompare={n => { setComparePlayer(n); setView('compare'); }} />}
-        {view === 'compare' && <Compare initialPlayer={comparePlayer} initialCompare={initialCompare} onClearInitial={() => { setComparePlayer(null); setInitialCompare(null); }} onPlayersChange={updateURL} />}
-        {view === 'eras' && <EraExplorer />}
-        {view === 'viz' && <Visualizations />}
+        <Suspense fallback={<Loading />}>
+          {view === 'rankings' && <Rankings onPlayerClick={n => { setPlayer(n); setView('player'); }} />}
+          {view === 'player' && <Players initialPlayer={player} onCompare={n => { setComparePlayer(n); setView('compare'); }} />}
+          {view === 'compare' && <Compare initialPlayer={comparePlayer} initialCompare={initialCompare} onClearInitial={() => { setComparePlayer(null); setInitialCompare(null); }} onPlayersChange={updateURL} />}
+          {view === 'eras' && <EraExplorer />}
+          {view === 'viz' && <Visualizations />}
+        </Suspense>
       </main>
     </>
   );

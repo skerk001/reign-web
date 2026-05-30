@@ -1,25 +1,10 @@
-// Service worker for caching REIGN NBA Analytics data files
-const CACHE_NAME = 'reign-data-v2';
-const DATA_FILES = [
-  '/data/seasons_pioneer.json',
-  '/data/seasons_legacy.json',
-  '/data/seasons_classic.json',
-  '/data/seasons_modern.json',
-  '/data/player_index.json',
-  '/data/awards.json',
-  '/data/stretches_rs3.json',
-  '/data/stretches_rs5.json',
-  '/data/stretches_po3.json',
-  '/data/stretches_po5.json',
-  '/data/career_avg_rs.json',
-  '/data/career_avg_po.json',
-  '/data/career_clutch.json',
-];
+// Service worker for caching REIGN NBA Analytics data files.
+// No install-time precache: files are cached on first real request via the
+// stale-while-revalidate fetch handler below, so a first visit doesn't eagerly
+// download ~22MB of JSON it may never use.
+const CACHE_NAME = 'reign-data-v3';
 
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(DATA_FILES))
-  );
+self.addEventListener('install', () => {
   self.skipWaiting();
 });
 
