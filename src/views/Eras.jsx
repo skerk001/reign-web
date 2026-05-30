@@ -336,6 +336,8 @@ export default function EraExplorer() {
             <EvolutionChart seasons={seasons} seasonType={seasonType} stat="fg3m" label="3-Pointers Made" unit="" color="#2563EB" />
             <EvolutionChart seasons={seasons} seasonType={seasonType} stat="ast" label="Assists (APG)" unit="" color="#8789C0" />
             <EvolutionChart seasons={seasons} seasonType={seasonType} stat="reb" label="Rebounds (RPG)" unit="" color="#92400e" />
+            <EvolutionChart seasons={seasons} seasonType={seasonType} stat="stl" label="Steals (SPG)" unit="" color="#06b6d4" />
+            <EvolutionChart seasons={seasons} seasonType={seasonType} stat="blk" label="Blocks (BPG)" unit="" color="#a78bfa" />
             <EvolutionChart seasons={seasons} seasonType={seasonType} stat="reign" label="Avg REIGN Score" unit="" color="#065f46" />
           </div>
         </div>
