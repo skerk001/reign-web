@@ -126,14 +126,28 @@ already consistent with legacy's (mean 0.38 vs 0.35, p90 2.44 vs 2.48). So this
 is a **fairness floor**, not a broken-data fix; West (1.1) and Oscar (0.6)
 already sit at/above the measurable guard baseline.
 
-### Pipeline note (before persisting the pioneer change)
-`seasons_pioneer.json` feeds derived files the site reads: `rankings.json` and
-`viz.json` (regenerable via `node scripts/build_rankings_index.js` /
-`build_viz.js`), plus `stretches_*.json`, `careers.json`, and `career_avg_*.json`
-— whose original generators are **not in the repo** (`regenerate_careers.py`
-expects a `seasons.json` that does not exist). The stretches logic has been
-decoded (a player's best-N seasons by reign, averaged) and reproduces the
-committed reign fields for all but 5 edge-case players; `careers.json` has a few
-fields (`ap`/`ar`/`aa`) not yet fully reverse-engineered. Persisting the pioneer
-adjustment therefore requires completing those generators so the whole site
-stays consistent — see open follow-up.
+### Pipeline (the change is persisted)
+`seasons_pioneer.json` feeds derived files the site reads. The original
+generators for the stretch/career files were missing from the repo
+(`regenerate_careers.py` expects a `seasons.json` that does not exist), so they
+were reverse-engineered in **`scripts/build_derived.py`**, which rebuilds
+`stretches_*`, `careers`, and `career_avg_*`. It is validated to reproduce the
+committed files to within float-rounding (`--verify`: identical player sets,
+max field drift ≤ 0.01 — the residual is the original's float-rounding of mean
+fields, which is unrecoverable from the rounded inputs).
+
+To keep the diff honest, regeneration is **surgical**: every committed record
+is preserved byte-for-byte except for the players actually touched by the floor
+(`def_adjusted`), whose records are recomputed; then `careers` is re-sorted and
+re-ranked. The full pipeline applied was:
+
+```bash
+python3 scripts/adjust_pioneer_defense.py --write   # 1912 rows floored
+python3 scripts/build_derived.py                    # 542 players recomputed
+node scripts/build_rankings_index.js                # rankings.json
+node scripts/build_viz.js                           # viz.json
+```
+
+The pioneer career leaderboard after the floor: Mikan, Wilt, Russell, Baylor,
+Cousy, Pettit lead on peak; Oscar (rp 15.1) and West (14.3) sit just below — the
+floor lifts mid-tier guards/wings but, as intended, does not overturn the bigs.

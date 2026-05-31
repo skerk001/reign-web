@@ -95,18 +95,24 @@ def calibrate_floor():
 
 
 def apply_adjustment(rows, floor):
+    """Floor only, and tag *only* the rows we actually change, so unaffected
+    rows stay byte-identical in the compact JSON. Idempotent: recompute from
+    the preserved original and un-tag if a row no longer clears the floor."""
     for r in rows:
-        # reset from preserved originals so the script is idempotent
         orig_def = r.get('reign_def_orig', r['reign_def'])
-        orig_off = r.get('reign_off')
-        r['reign_def_orig'] = orig_def
-        r['reign_orig'] = r.get('reign_orig', r['reign'])
+        orig_off = num(r.get('reign_off'))
         f = floor[r['_role']][bucket_of(num(r.get('min')))]
         adj = max(orig_def, f)
-        r['reign_def'] = round(adj, 2)
-        r['reign'] = round(num(orig_off) + adj, 2)
-        r['def_adjusted'] = adj > orig_def + 1e-9
-        # leave the helper fields out of the persisted file
+        if adj > orig_def + 1e-9:
+            r['reign_def_orig'] = orig_def
+            r.setdefault('reign_orig', r['reign'])
+            r['reign_def'] = round(adj, 2)
+            r['reign'] = round(orig_off + adj, 2)
+            r['def_adjusted'] = True
+        elif 'reign_def_orig' in r:  # previously adjusted, now restore
+            r['reign_def'] = r.pop('reign_def_orig')
+            r['reign'] = r.pop('reign_orig', r['reign'])
+            r.pop('def_adjusted', None)
     return rows
 
 
@@ -141,7 +147,8 @@ def main():
             r.pop('_role_score', None)
             r.pop('_role', None)
         path = os.path.join(DATA, 'seasons_pioneer.json')
-        json.dump(rows, open(path, 'w'), indent=0)
+        with open(path, 'w') as f:
+            json.dump(rows, f, separators=(',', ':'))
         print(f"wrote {os.path.relpath(path)}")
     else:
         print("(dry run - pass --write to persist)")
