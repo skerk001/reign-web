@@ -41,7 +41,9 @@
 .mth-era-top { display: flex; align-items: baseline; gap: 10px; position: relative; z-index: 1; }
 .mth-era-name { font-family: var(--font-display); font-size: 1.3rem; font-weight: 900; color: var(--ec); }
 .mth-era-years { font-family: var(--font-mono); font-size: 0.82rem; font-weight: 700; color: var(--muted); }
-.mth-era-model { font-family: var(--font-mono); font-size: 0.82rem; font-weight: 800; color: var(--ink-2); margin: 6px 0 8px; position: relative; z-index: 1; }
+.mth-era-model { font-family: var(--font-mono); font-size: 0.82rem; font-weight: 800; color: var(--ec); margin: 6px 0 4px; position: relative; z-index: 1; }
+.mth-era-dot { color: var(--ink-3); margin: 0 2px; }
+.mth-era-inputs { font-family: var(--font-mono); font-size: 0.72rem; font-weight: 600; color: var(--ink-3); margin: 0 0 8px; position: relative; z-index: 1; letter-spacing: 0.01em; }
 .mth-era-note { font-size: 0.9rem; line-height: 1.55; color: var(--ink-2); font-weight: 500; position: relative; z-index: 1; }
 
 /* scale */

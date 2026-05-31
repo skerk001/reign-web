@@ -83,37 +83,37 @@
     },
     "reign_def": {
       "n": 3097,
-      "r2": 0.6403,
-      "mae": 0.6005,
-      "intercept": 0.3773,
+      "r2": 0.6742,
+      "mae": 0.5036,
+      "intercept": 1.0728,
       "terms": [
         {
           "feature": "dws",
-          "weight": 1.549,
+          "weight": 1.0121,
           "mean": 1.0267,
           "std": 1.2641
         },
         {
           "feature": "reb",
-          "weight": 0.1083,
+          "weight": 0.1185,
           "mean": 3.9479,
           "std": 4.2078
         },
         {
           "feature": "pf",
-          "weight": 0.1303,
+          "weight": -0.0568,
           "mean": 2.8241,
           "std": 1.0661
         },
         {
           "feature": "min",
-          "weight": -0.0705,
+          "weight": 0.4417,
           "mean": 28.8577,
           "std": 9.466
         },
         {
           "feature": "gp",
-          "weight": -0.711,
+          "weight": -0.6077,
           "mean": 37.9219,
           "std": 27.8059
         }

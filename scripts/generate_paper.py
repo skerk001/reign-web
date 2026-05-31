@@ -8,12 +8,23 @@ from reportlab.lib.units import inch
 from reportlab.lib.colors import HexColor
 from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
-    PageBreak, ListFlowable, ListItem, HRFlowable
+    PageBreak, ListFlowable, ListItem, HRFlowable, Image
 )
 from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY, TA_LEFT
+from reportlab.lib.utils import ImageReader
 import os
 
-OUTPUT = '/mnt/user-data/outputs/REIGN_Methodology_Paper.pdf'
+FIGDIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'docs', 'figures')
+
+
+def figure(fname, caption, width=5.2 * inch):
+    """Return [image, caption] flowables, scaled to keep the PNG aspect ratio."""
+    path = os.path.join(FIGDIR, fname)
+    iw, ih = ImageReader(path).getSize()
+    return [Spacer(1, 4), Image(path, width=width, height=width * ih / iw),
+            Paragraph(caption, styles['Caption'])]
+
+OUTPUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'docs', 'REIGN_Methodology_Paper.pdf')
 
 doc = SimpleDocTemplate(
     OUTPUT, pagesize=letter,
@@ -56,8 +67,9 @@ story.append(Paragraph(
     'statistical eras with vastly different pace, efficiency, and data availability. The metric decomposes into '
     'offensive (REIGN<sub>OFF</sub>) and defensive (REIGN<sub>DEF</sub>) components, leveraging a weighted ensemble '
     'of Win Shares per 48 minutes, Value Over Replacement Player, Box Plus-Minus, and traditional box score statistics. '
-    'For the pre-analytics era (1946\u20131973), where advanced statistics are unavailable, REIGN employs a machine learning '
-    'imputation framework trained on the overlap period. We evaluate REIGN across 29,969 player-seasons and 3,484 unique '
+    'A separate model is fit for each of four eras, since the available statistics differ fundamentally across NBA '
+    'history; for the pre-1962 era, where no individual defensive statistics exist, REIGN applies a role-relative '
+    'defensive floor calibrated to the earliest measurable seasons. We evaluate REIGN across 29,969 player-seasons and 3,484 unique '
     'players, demonstrating strong correlation with team success (r = 0.83) and expert consensus rankings while maintaining '
     'cross-era stability. The metric, its methodology, and an interactive analytics platform are made publicly available.',
     styles['Abstract']
@@ -121,6 +133,8 @@ t.setStyle(TableStyle([
 ]))
 story.append(t)
 story.append(Paragraph('Table 1: Statistical availability across NBA eras.', styles['Caption']))
+story.extend(figure('fig1_era_distribution.png', 'Figure 1: Distribution of player-seasons across the four eras.'))
+story.extend(figure('fig3_league_evolution.png', 'Figure 2: League-wide evolution of scoring, pace, and efficiency, 1946–2025.'))
 
 # ═══ 3. METHODOLOGY ═══
 story.append(Paragraph('3. Methodology', styles['SectionHead']))
@@ -132,7 +146,12 @@ story.append(Paragraph(
 story.append(Paragraph('REIGN = REIGN<sub>OFF</sub> + REIGN<sub>DEF</sub>', styles['Equation']))
 story.append(Paragraph(
     'Each component is computed as a weighted ensemble of established advanced metrics, normalized relative to '
-    'era-specific baselines. The ensemble approach mitigates the known biases of any single metric.',
+    'era-specific baselines. The ensemble approach mitigates the known biases of any single metric. Critically, '
+    'the weights are <i>not</i> shared across history: a separate model is fit for each of the four eras, because the '
+    'available statistics and their relationship to impact differ fundamentally between them (Table 1). The per-era '
+    'coefficients, era-normalization constants, and fit statistics reported here are fully reproducible from the '
+    'published season data via the open-source <font face="Courier">derive_formulas.py</font>, and are released as '
+    '<font face="Courier">reign_formulas.json</font>.',
     styles['Body']
 ))
 
@@ -147,10 +166,12 @@ story.append(Paragraph(
 ))
 story.append(Paragraph(
     'where OWS* denotes era-normalized Offensive Win Shares, OBPM* denotes era-normalized Offensive Box Plus-Minus, '
-    'VORP<sub>OFF</sub>* is the offensive component of VORP (estimated from OBPM and minutes), and f(PTS, AST, TS%) is a box '
-    'score\u2013derived scoring efficiency function. The weights w<sub>1</sub> through w<sub>4</sub> are determined via '
-    'ridge regression against team offensive rating differentials, yielding approximate values of w<sub>1</sub> = 0.86, '
-    'w<sub>2</sub> = 0.55, w<sub>3</sub> = 0.18, w<sub>4</sub> = 0.04.',
+    'VORP* is era-normalized Value Over Replacement Player, and f(PTS, AST, TS%) is a box score\u2013derived scoring '
+    'efficiency term that includes the volume\u00d7efficiency interaction PTS\u00b7TS%. The weights are fit by ridge '
+    'regression per era. The offensive component reconstructs cleanly across history: cross-validated R\u00b2 ranges from '
+    '0.80 (Modern) to 0.94 (Classic), with a nonlinear ceiling of 0.97\u20130.98 (Section 5.2). In the Pioneer era, where '
+    'OBPM and VORP do not exist, the term reduces to OWS and the scoring function f(PTS, AST, TS%), which alone recover '
+    'R\u00b2 = 0.93.',
     styles['Body']
 ))
 
@@ -165,10 +186,12 @@ story.append(Paragraph(
 ))
 story.append(Paragraph(
     'where DWS* is era-normalized Defensive Win Shares, DBPM* is era-normalized Defensive Box Plus-Minus, and '
-    'g(BLK, STL, DRB) is a box score defensive proxy function. Regression against team defensive rating differentials '
-    'yields approximate weights of w<sub>5</sub> = 0.46, w<sub>6</sub> = 0.43, w<sub>7</sub> = 0.56 (for the block coefficient) '
-    'and 0.56 (for steals). The defensive component exhibits lower R\u00b2 (0.67 vs 0.88 for offense), consistent with the '
-    'well-documented difficulty of measuring individual defense from box score data.',
+    'g(BLK, STL, DRB) is a box score defensive proxy that includes the minute-weighted interactions BLK\u00b7MIN and '
+    'STL\u00b7MIN. As with offense, weights are fit per era. The defensive component is consistently harder to reconstruct '
+    'than offense, reflecting the well-documented difficulty of measuring individual defense from the box score: '
+    'cross-validated R\u00b2 is 0.83 (Legacy) and 0.86 (Classic) where steals, blocks and DBPM are available, but falls to '
+    '0.67 in the Pioneer era (no individual defensive statistics exist before 1973\u201374) and 0.48 in the Modern era '
+    '(Section 3.5). Where DBPM, STL and BLK are present, a flexible model lifts the ceiling to 0.94\u20130.97 (Section 5.2).',
     styles['Body']
 ))
 
@@ -189,18 +212,27 @@ story.append(Paragraph(
     styles['Body']
 ))
 
-story.append(Paragraph('3.5 Pre-Analytics Imputation (1946\u20131973)', styles['SubHead']))
+story.append(Paragraph('3.5 The Pre-1962 and Modern Defensive Gaps', styles['SubHead']))
 story.append(Paragraph(
-    'For seasons prior to 1973, key advanced statistics (BPM, VORP, OBPM, DBPM, steals, blocks, turnovers) are unavailable. '
-    'REIGN addresses this through a gradient-boosted regression model trained on the overlap period (1973\u20132000) where both '
-    'basic and advanced statistics exist. The model learns the mapping from available features (PTS, REB, AST, FG%, FT%, '
-    'minutes, games played, Win Shares) to the missing advanced metrics.',
+    'Two eras require special handling on the defensive side. In the Pioneer era (through 1962), no individual defensive '
+    'statistics exist at all\u2014the NBA did not record steals or blocks until 1973\u201374, and BPM/VORP are likewise '
+    'unavailable. The only defensive signal is Defensive Win Shares, a team-allocated quantity that scales with minutes '
+    'and therefore structurally favors centers over guards. Rather than fabricate individual defense, REIGN applies a '
+    '<i>role-relative floor</i>: each player\u2019s defensive score is raised to the median DWS-based REIGN<sub>DEF</sub> '
+    'earned by same-role, same-minutes players in the earliest era for which defense <i>is</i> measurable (1963\u20131972). '
+    'Role (guard / wing / big) is inferred from each season\u2019s rebound\u2013assist profile. The floor never demotes a '
+    'player, so elite defenders such as Russell and Mikan retain their full scores; it only lifts back-court players who '
+    'would otherwise be credited with near-zero defense.',
     styles['Body']
 ))
 story.append(Paragraph(
-    'The imputation model achieves cross-validated R\u00b2 values of 0.91 for BPM, 0.88 for VORP, and 0.79 for the '
-    'offensive/defensive decomposition. Imputed values carry higher uncertainty, which is acknowledged in the metric\u2019s '
-    'documentation but not explicitly modeled as confidence intervals in the current version.',
+    'This is a calibration choice, not a recovery: because individual defensive data does not exist pre-1962, the '
+    'Pioneer defensive R\u00b2 (0.67) is an upper bound on what a single available signal can explain, and the floor is '
+    'designed to be conservative. In the Modern era the difficulty is different in kind\u2014the box and advanced inputs '
+    'exist, but roughly one third of player-seasons are missing the advanced metrics (BPM/VORP/WS) that drive the model, '
+    'and the historical vintage of those metrics used to fit the original scores is not perfectly recoverable from '
+    'present-day sources. On the rows where the advanced inputs are present, Modern REIGN<sub>DEF</sub> reconstructs at '
+    'R\u00b2 \u2248 0.85; the era-wide figure of 0.48 reflects this coverage gap rather than a deficiency of the model form.',
     styles['Body']
 ))
 
@@ -252,39 +284,50 @@ story.append(Paragraph(
 story.append(Paragraph('5.2 Model Fit Statistics', styles['SubHead']))
 
 fit_data = [
-    ['Component', 'Features', 'R\u00b2', 'MAE'],
-    ['REIGN (total)', 'VORP, WS/48, BPM + box', '0.897', '1.05'],
-    ['REIGN_OFF', 'OWS, OBPM, VORP', '0.884', '0.92'],
-    ['REIGN_DEF', 'DWS, DBPM, BLK, STL', '0.667', '1.28'],
-    ['Full ensemble', 'All 15 features', '0.897', '1.05'],
+    ['Era', 'Component', 'Dominant features', 'R\u00b2', 'MAE'],
+    ['Pioneer', 'REIGN_OFF', 'OWS, PTS, AST, TS%', '0.93', '0.69'],
+    ['Pioneer', 'REIGN_DEF', 'DWS, REB (no STL/BLK)', '0.67', '0.50'],
+    ['Legacy', 'REIGN_OFF', 'OWS, PTS\u00b7TS%, MIN\u00b7WS/48', '0.87', '0.92'],
+    ['Legacy', 'REIGN_DEF', 'DWS, DREB, STL, MIN\u00b7DBPM', '0.83', '0.43'],
+    ['Classic', 'REIGN_OFF', 'OWS, OBPM, MIN\u00b7OBPM', '0.94', '0.61'],
+    ['Classic', 'REIGN_DEF', 'STL, DREB, DBPM, BLK', '0.86', '0.50'],
+    ['Modern', 'REIGN_OFF', 'PTS\u00b7TS%, OWS, VORP', '0.80', '1.07'],
+    ['Modern', 'REIGN_DEF', 'STL, BLK, MIN\u00b7DBPM', '0.48', '0.89'],
 ]
-t2 = Table(fit_data, colWidths=[85, 155, 45, 45])
+t2 = Table(fit_data, colWidths=[52, 75, 185, 38, 38])
 t2.setStyle(TableStyle([
     ('FONTNAME', (0, 0), (-1, 0), 'Times-Bold'),
     ('FONTSIZE', (0, 0), (-1, -1), 9),
     ('GRID', (0, 0), (-1, -1), 0.5, HexColor('#ddd')),
     ('BACKGROUND', (0, 0), (-1, 0), HexColor('#f0f0f0')),
-    ('ALIGN', (2, 0), (-1, -1), 'CENTER'),
+    ('ALIGN', (3, 0), (-1, -1), 'CENTER'),
     ('TOPPADDING', (0, 0), (-1, -1), 4),
     ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
 ]))
 story.append(t2)
-story.append(Paragraph('Table 2: Model fit statistics for REIGN components. R\u00b2 and MAE computed on held-out test set (20% of data).', styles['Caption']))
+story.append(Paragraph('Table 2: Per-era model fit for the offensive and defensive components, fit by ridge regression '
+    'on era-normalized features (5-fold cross-validated R\u00b2; in-sample MAE). A flexible gradient-boosted model raises '
+    'these ceilings to 0.94\u20130.98 for every era/component except Modern defense (0.48), which is bounded by missing '
+    'inputs rather than model form. Full per-era coefficients are released in reign_formulas.json.', styles['Caption']))
+story.extend(figure('fig5_model_r2.png', 'Figure 3: Combined (offense + defense) model fit by era. The all-feature '
+    'total-REIGN R\u00b2 is highest where data is richest and lowest in the Modern era, where advanced-stat coverage is incomplete.'))
+story.extend(figure('fig4_off_vs_def.png', 'Figure 4: Offensive versus defensive REIGN. Elite defenders (upper region) '
+    'are predominantly bigs, reflecting how box-score data measures defense.'))
 
 story.append(Paragraph('5.3 All-Time Rankings Comparison', styles['SubHead']))
 
 rank_data = [
     ['Rank', 'Player', 'Peak REIGN', '3yr Peak', '5yr Peak', 'Career Total'],
-    ['1', 'LeBron James', '+27.70', '+27.02', '+25.89', '412'],
-    ['2', 'Stephen Curry', '+26.67', '+25.03', '+23.34', '250'],
-    ['3', 'Michael Jordan', '+26.59', '+25.73', '+25.25', '261'],
-    ['4', 'Chris Paul', '+24.18', '+23.52', '+23.10', '315'],
-    ['5', 'Kevin Garnett', '+24.13', '+21.92', '+20.66', '247'],
-    ['6', 'David Robinson', '+23.88', '+22.20', '+21.28', '216'],
-    ['7', 'Shaquille O\u2019Neal', '+23.81', '+23.00', '+21.88', '277'],
-    ['8', 'Dwyane Wade', '+23.55', '+20.91', '+20.01', '179'],
-    ['9', 'Shai Gilgeous-Alexander', '+23.22', '+22.66', '+19.07', '102'],
-    ['10', 'Nikola Joki\u0107', '+23.12', '+21.37', '+20.34', '165'],
+    ['1', 'LeBron James', '+27.70', '+27.02', '+25.89', '401'],
+    ['2', 'Michael Jordan', '+26.59', '+25.73', '+25.25', '261'],
+    ['3', 'Stephen Curry', '+26.59', '+23.23', '+21.22', '233'],
+    ['4', 'Shai Gilgeous-Alexander', '+24.72', '+23.07', '+19.09', '110'],
+    ['5', 'Nikola Joki\u0107', '+24.40', '+22.75', '+21.41', '171'],
+    ['6', 'Chris Paul', '+24.18', '+23.06', '+22.49', '310'],
+    ['7', 'Kevin Garnett', '+24.13', '+21.92', '+20.66', '243'],
+    ['8', 'James Harden', '+24.06', '+23.42', '+22.32', '252'],
+    ['9', 'David Robinson', '+23.88', '+22.20', '+21.28', '216'],
+    ['10', 'Shaquille O\u2019Neal', '+23.81', '+23.00', '+21.88', '277'],
 ]
 t3 = Table(rank_data, colWidths=[32, 130, 65, 60, 60, 65])
 t3.setStyle(TableStyle([
@@ -299,6 +342,8 @@ t3.setStyle(TableStyle([
 ]))
 story.append(t3)
 story.append(Paragraph('Table 3: Top 10 all-time players by peak REIGN (regular season).', styles['Caption']))
+story.extend(figure('fig2_top15_peak.png', 'Figure 5: Top 15 all-time players by single-season peak REIGN.'))
+story.extend(figure('fig6_rs_vs_po.png', 'Figure 6: Regular season versus playoff REIGN, showing risers and fallers under postseason competition.'))
 
 # ═══ 6. LIMITATIONS ═══
 story.append(Paragraph('6. Limitations and Future Work', styles['SectionHead']))
@@ -409,5 +454,11 @@ story.append(Paragraph(
 ))
 
 # BUILD
+import shutil
 doc.build(story)
 print(f"Generated: {OUTPUT}")
+
+# Mirror into public/ so the website serves the same file at /REIGN_Methodology_Paper.pdf
+PUBLIC = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'public', 'REIGN_Methodology_Paper.pdf')
+shutil.copy(OUTPUT, PUBLIC)
+print(f"Copied to: {PUBLIC}")

@@ -13,8 +13,9 @@ The full methodology is documented in our formal research paper:
 *Samir Kerkar — Courtside Analytics, March 2026*
 
 Key contributions:
-- Four era-specific regression models (Pioneer, Legacy, Classic, Modern)
-- 60/40 dampened blend for Modern era recomputation using scraped advanced stats
+- Four era-specific models with `REIGN = REIGN_OFF + REIGN_DEF`, fit on era-normalized features
+- Re-derived, fully reproducible per-era formulas published as [`reign_formulas.json`](public/data/reign_formulas.json)
+- Role-relative defensive floor for the pre-1962 era, where no individual defensive stats exist
 - Playoff opponent strength adjustment based on opposing team quality
 - 29,969 player-seasons, 3,484 players, 1946–2025
 
@@ -35,16 +36,28 @@ Key contributions:
 
 ## How REIGN Works
 
-REIGN uses **different models for different eras** because the available statistics differ fundamentally across NBA history:
+Every score decomposes exactly into an offensive and a defensive component:
+
+```
+REIGN = REIGN_OFF + REIGN_DEF
+```
+
+Because the available statistics differ fundamentally across NBA history, **a separate model is fit for each era** on era-normalized (z-scored) features. The recovered per-era fits:
 
 ![Model Fit](docs/figures/fig5_model_r2.png)
 
-- **Pioneer (1946-62):** TS%-dominant model, 11 features, no steals/blocks/BPM
-- **Legacy (1963-95):** WS/48-dominant, 18 features, richest data
-- **Classic (1996-2012):** WS/48 + VORP, 19 features including 3P%
-- **Modern (2013-25):** WS/48-dominant after enrichment, 19 features
+| Era | REIGN_OFF R² | REIGN_DEF R² | Dominant inputs |
+|-----|:---:|:---:|---|
+| **Pioneer** (1946-62) | 0.93 | 0.67 | OWS, PTS, AST, TS% — *no STL/BLK/BPM exist* |
+| **Legacy** (1963-95) | 0.87 | 0.83 | OWS, DWS, DREB, STL, DBPM |
+| **Classic** (1996-2012) | 0.94 | 0.86 | OWS, OBPM, STL, DREB, DBPM |
+| **Modern** (2013-25) | 0.80 | 0.48 | PTS·TS%, OWS, STL, BLK, DBPM |
 
-All scores are era-normalized via z-score within rolling 5-year windows, ensuring +20 REIGN means the same relative dominance whether it's 1988 or 2024.
+*(cross-validated R²; a flexible model lifts these ceilings to 0.94–0.98 everywhere except Modern defense, which is capped by missing advanced-stat coverage, not model form.)*
+
+Two eras get special handling on defense: **Pioneer** has no individual defensive stats at all (steals/blocks weren't recorded until 1973-74), so REIGN_DEF there is a *role-relative floor* calibrated to the earliest measurable seasons rather than a fabricated estimate. Scores are era-normalized so +20 REIGN means the same relative dominance whether it's 1988 or 2024.
+
+> **Formula spec:** the full per-era coefficients, intercepts, and z-score constants are published in [`public/data/reign_formulas.json`](public/data/reign_formulas.json), reproducible via `scripts/derive_formulas.py`. Methodology notes: [`docs/REIGN_FORMULAS.md`](docs/REIGN_FORMULAS.md).
 
 ![Era Distribution](docs/figures/fig1_era_distribution.png)
 
@@ -104,8 +117,11 @@ Additional: `awards.json`, `stretches_rs3/rs5/po3/po5.json`, `career_avg_rs/po.j
 
 ## Scripts
 
-- `scripts/regenerate_careers.py` — Rebuild careers.json from seasons.json
-- `scripts/generate_paper.py` — Generate the methodology PDF
+- `scripts/derive_formulas.py` — Re-derive the per-era REIGN formulas → `reign_formulas.json`
+- `scripts/adjust_pioneer_defense.py` — Role-relative defensive floor for the pre-1962 era
+- `scripts/build_derived.py` — Rebuild stretches / careers / career_avg from the season files
+- `scripts/backfill_modern_advanced.py` — Fetch missing modern advanced stats from Basketball-Reference
+- `scripts/generate_paper.py` — Generate the methodology PDF (with figures)
 
 ## License
 
