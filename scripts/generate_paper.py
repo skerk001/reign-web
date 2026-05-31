@@ -454,5 +454,11 @@ story.append(Paragraph(
 ))
 
 # BUILD
+import shutil
 doc.build(story)
 print(f"Generated: {OUTPUT}")
+
+# Mirror into public/ so the website serves the same file at /REIGN_Methodology_Paper.pdf
+PUBLIC = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'public', 'REIGN_Methodology_Paper.pdf')
+shutil.copy(OUTPUT, PUBLIC)
+print(f"Copied to: {PUBLIC}")

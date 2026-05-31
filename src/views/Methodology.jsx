@@ -2,14 +2,14 @@ import { reignBg, offBg, defBg, textColor } from '../utils/heatmap';
 import './Methodology.css';
 
 const ERA_MODELS = [
-  { id: 'Pioneer', color: '#8789C0', years: '1946–62', model: 'TS%-dominant', features: '11 features',
-    note: 'No steals, blocks, or BPM existed yet — the early box score. Shooting efficiency carries the model.' },
-  { id: 'Legacy', color: '#D97706', years: '1963–95', model: 'WS/48-dominant', features: '18 features',
-    note: 'The richest classic data. Win Shares per 48 anchor impact through the golden age of individual greatness.' },
-  { id: 'Classic', color: '#2563EB', years: '1996–2012', model: 'WS/48 + VORP', features: '19 features',
-    note: 'Adds VORP and 3P% as the three-point era and advanced tracking arrive.' },
-  { id: 'Modern', color: '#10B981', years: '2013–25', model: 'WS/48-dominant', features: '19 features',
-    note: 'Recomputed with a 60/40 dampened blend over scraped advanced stats for stability.' },
+  { id: 'Pioneer', color: '#8789C0', years: '1946–62', off: 0.93, def: 0.67, inputs: 'OWS · PTS · AST · TS%',
+    note: 'No steals, blocks, or BPM existed yet. Offense recovers cleanly from scoring and Win Shares; defense has no individual signal, so REIGN_DEF uses a role-relative floor calibrated to the earliest measurable seasons.' },
+  { id: 'Legacy', color: '#D97706', years: '1963–95', off: 0.87, def: 0.83, inputs: 'OWS · DWS · DREB · STL · DBPM',
+    note: 'Steals and blocks arrive (1973-74), giving the first real defensive signal through the golden age of individual greatness.' },
+  { id: 'Classic', color: '#2563EB', years: '1996–2012', off: 0.94, def: 0.86, inputs: 'OWS · OBPM · STL · DREB · DBPM',
+    note: 'The richest box-and-advanced data — both components reconstruct strongly as the three-point era takes hold.' },
+  { id: 'Modern', color: '#10B981', years: '2013–25', off: 0.80, def: 0.48, inputs: 'PTS·TS% · OWS · STL · BLK · DBPM',
+    note: 'Offense holds up, but ~1/3 of seasons are missing the advanced metrics that drive defense — so REIGN_DEF is bounded by data coverage, not the model.' },
 ];
 
 const TIERS = [
@@ -85,7 +85,10 @@ export default function Methodology() {
                   <span className="mth-era-name">{e.id}</span>
                   <span className="mth-era-years">{e.years}</span>
                 </div>
-                <div className="mth-era-model">{e.model} · {e.features}</div>
+                <div className="mth-era-model">
+                  OFF R² {e.off.toFixed(2)} <span className="mth-era-dot">·</span> DEF R² {e.def.toFixed(2)}
+                </div>
+                <div className="mth-era-inputs">{e.inputs}</div>
                 <p className="mth-era-note">{e.note}</p>
               </div>
             ))}
