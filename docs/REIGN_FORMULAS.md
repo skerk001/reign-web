@@ -83,14 +83,57 @@ Because linear ≈ ceiling for modern (0.80≈0.84 off, 0.48≈0.48 def), the ga
 Forcing modern `reign_def` toward R² = 1 would only memorize noise on the rows
 that happen to have data and would distort, not improve, the rankings.
 
-## 4. Recommendation
+## 4. Acting on the two gaps
 
-* For **pioneer / legacy / classic**, the formulas in `reign_formulas.json`
-  reconstruct REIGN well (component R² 0.83–0.94 linear, 0.94–0.98 ceiling);
-  these are safe to document and use.
-* The pioneer guard-defense ceiling is inherent to pre-1973 data. If guards
-  should rank higher there, that is a **methodology** decision (e.g. a defensive
-  floor, a position adjustment, or excluding defense pre-1973) — not a fit to
-  improve.
-* For **modern**, populate the missing `bpm`/`vorp`/`ws` coverage (and the 2025
-  season) at the data-source step before trusting any modern defensive formula.
+### Modern: backfill the real advanced stats (do not impute)
+The 2335 missing rows are a **join failure**, not absent data — they include
+30+ mpg starters (e.g. Nikola Pekovic 2013). On the rows that *do* have the
+advanced inputs, modern REIGN recovers cleanly (`reign_def` CV-R² **0.85**,
+`reign_off` **0.97**), so filling them lifts modern from 0.48→~0.85 (def) and
+0.84→~0.97 (off).
+
+We do **not** impute: box-score imputation of the advanced metrics measured at
+only 0.72–0.88 (`dbpm`, the key defensive driver, weakest at 0.72), which would
+inject estimation error into a third of the era. The authoritative source
+(Basketball-Reference) is the right fix. `scripts/backfill_modern_advanced.py`
+fetches and joins the real per-season advanced tables; run it from any
+environment that can reach basketball-reference.com (it was network-blocked,
+HTTP 403, from where this analysis ran), then rerun the build + derive scripts.
+
+### Pioneer: a role-relative defensive floor (`scripts/adjust_pioneer_defense.py`)
+There is no individual defensive data and no position field pre-1962, so any
+guard-defense credit is an **assumption**. We make the most conservative,
+data-grounded one: a *floor only* (never a demotion), calibrated to the median
+`reign_def` earned by same-role, same-minutes players in the earliest
+measurable era (legacy 1963–72):
+
+```
+floor (legacy 1963-72 median reign_def, >=0):
+  guard  32-48min: 0.40   28-32min: 0.24
+  wing   32-48min: 0.90   28-32min: 0.22
+  big    32-48min: 1.69   28-32min: 0.72
+reign_def_adj = max(reign_def_orig, floor[role][minutes]);  reign = off + def_adj
+```
+
+Role is inferred from each season's `z(reb) − z(ast)` profile. The script is
+idempotent and reversible (preserves `reign_def_orig`/`reign_orig`).
+
+**Honest result:** this lifts 1912/3097 under-credited rotation guards/wings but
+does **not** vault West/Oscar over Mikan/Russell/Wilt — and it shouldn't. The
+calibration shows defense favors bigs *even when measured* (legacy starter median
+`reign_def`: guard 0.40 vs big 1.69), and pioneer's `reign_def` distribution is
+already consistent with legacy's (mean 0.38 vs 0.35, p90 2.44 vs 2.48). So this
+is a **fairness floor**, not a broken-data fix; West (1.1) and Oscar (0.6)
+already sit at/above the measurable guard baseline.
+
+### Pipeline note (before persisting the pioneer change)
+`seasons_pioneer.json` feeds derived files the site reads: `rankings.json` and
+`viz.json` (regenerable via `node scripts/build_rankings_index.js` /
+`build_viz.js`), plus `stretches_*.json`, `careers.json`, and `career_avg_*.json`
+— whose original generators are **not in the repo** (`regenerate_careers.py`
+expects a `seasons.json` that does not exist). The stretches logic has been
+decoded (a player's best-N seasons by reign, averaged) and reproduces the
+committed reign fields for all but 5 edge-case players; `careers.json` has a few
+fields (`ap`/`ar`/`aa`) not yet fully reverse-engineered. Persisting the pioneer
+adjustment therefore requires completing those generators so the whole site
+stays consistent — see open follow-up.
