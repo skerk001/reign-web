@@ -122,6 +122,43 @@ Additional: `awards.json`, `stretches_rs3/rs5/po3/po5.json`, `career_avg_rs/po.j
 - `scripts/build_derived.py` — Rebuild stretches / careers / career_avg from the season files
 - `scripts/backfill_modern_advanced.py` — Fetch missing modern advanced stats from Basketball-Reference
 - `scripts/generate_paper.py` — Generate the methodology PDF (with figures)
+- `scripts/refresh_current_season.py` — Scrape the in-progress season from Basketball-Reference and score it with the published formulas
+- `scripts/reign_score.py` — Apply `reign_formulas.json` to score a row (the forward direction of `derive_formulas.py`)
+- `scripts/refresh_all.sh` — One-shot nightly refresh: scrape → score → rebuild every derived/index file
+
+## Daily Auto-Refresh
+
+The live site keeps itself current without manual work. A scheduled GitHub
+Action (`.github/workflows/refresh-data.yml`) runs every morning (11:00 UTC,
+after the prior night's games are final) and:
+
+1. **Scrapes** the in-progress season's per-game + advanced tables from
+   Basketball-Reference (`refresh_current_season.py`).
+2. **Scores** every player with the frozen per-era REIGN formulas
+   (`reign_score.py` applying `reign_formulas.json`) — so new seasons land on
+   the exact same ruler as the historical 80 years.
+3. **Rebuilds** the derived data the site loads — careers, stretches,
+   career averages, the leaderboard index, and the visualization payload.
+4. **Commits** the changed `public/data/*.json` back to the repo, which
+   triggers the host (Netlify/Vercel) to redeploy. A no-change night is a
+   clean no-op — nothing is committed.
+
+Only the current season is refreshed each run: the historical eras (1946–2012)
+are frozen and never change, so nightly diffs stay small. Run it by hand with:
+
+```bash
+npm run refresh             # auto-detect the current season
+npm run refresh -- --year 2026
+```
+
+> **Scope notes:** scoring uses the published reconstructed formulas (the model
+> the repo ships), so refreshed numbers carry that model's reconstruction error,
+> not the original uncommitted pipeline's. Clutch (`clutch_*`) stats come from
+> nba.com, not Basketball-Reference, and REIGN does not use them, so freshly
+> scraped rows have no clutch data until a separate clutch backfill runs — every
+> other view renders without it. If Basketball-Reference rate-limits or blocks a
+> CI run, the job fails loudly and commits nothing rather than writing partial
+> data; re-run the workflow (`workflow_dispatch`) to retry.
 
 ## License
 

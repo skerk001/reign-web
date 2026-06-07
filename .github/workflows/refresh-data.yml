@@ -1,0 +1,61 @@
+name: Refresh REIGN data
+
+# Pulls the current NBA season from Basketball-Reference every morning,
+# re-scores it with the published REIGN formulas, regenerates the derived
+# data files, and commits the result. The commit is what triggers the site
+# to redeploy (Netlify/Vercel build on push), so the live numbers move on
+# their own each day.
+
+on:
+  schedule:
+    # 11:00 UTC ~= 6-7am US Eastern, after the prior night's games are final.
+    - cron: '0 11 * * *'
+  workflow_dispatch:
+    inputs:
+      year:
+        description: 'Season end year to refresh (blank = auto-detect current)'
+        required: false
+        default: ''
+
+# Allow the job to push the regenerated data back to the branch.
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-data
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Refresh + rebuild data
+        run: |
+          if [ -n "${{ github.event.inputs.year }}" ]; then
+            scripts/refresh_all.sh --year "${{ github.event.inputs.year }}"
+          else
+            scripts/refresh_all.sh
+          fi
+
+      - name: Commit if data changed
+        run: |
+          if git diff --quiet -- public/data; then
+            echo "No data changes today — nothing to commit."
+            exit 0
+          fi
+          git config user.name  "reign-data-bot"
+          git config user.email "actions@users.noreply.github.com"
+          SEASON=$(python3 -c "import scripts.refresh_current_season as r; print(r.current_season_year())" 2>/dev/null || date +%Y)
+          git add public/data
+          git commit -m "Auto-refresh ${SEASON} season data ($(date -u +%Y-%m-%d))"
+          git push
