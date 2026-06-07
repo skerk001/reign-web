@@ -27,7 +27,11 @@ concurrency:
 
 jobs:
   refresh:
-    runs-on: ubuntu-latest
+    # Defaults to GitHub's hosted runner. Basketball-Reference and stats.nba.com
+    # block datacenter IPs, so hosted runs often 403. To fetch from a
+    # non-datacenter (e.g. residential) IP, stand up a self-hosted runner and set
+    # the repo variable RUNNER_LABEL to its label (see docs/SELF_HOSTED_RUNNER.md).
+    runs-on: ${{ vars.RUNNER_LABEL || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v4
 

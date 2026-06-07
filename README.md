@@ -171,8 +171,11 @@ npm run refresh -- --year 2026
 > correct browser headers. Each fetcher fails *loud and writes nothing* rather
 > than committing partial data; the clutch step is best-effort so a clutch
 > block doesn't abort the core REIGN refresh. If runs are blocked, the fix is
-> a non-datacenter egress: a [self-hosted runner](https://docs.github.com/actions/hosting-your-own-runners)
-> on a residential/static IP, or routing the fetch through a proxy.
+> a non-datacenter egress: a self-hosted runner on a **residential** IP
+> (a cloud VM stays blocked) — see
+> [`docs/SELF_HOSTED_RUNNER.md`](docs/SELF_HOSTED_RUNNER.md) — or routing the
+> fetch through a proxy. The workflow honors a `RUNNER_LABEL` repo variable, so
+> pointing it at your runner needs no code change.
 > Additionally, Sports-Reference's [data-use policy](https://www.sports-reference.com/data_use.html)
 > asks that you not build tools/sites on their scraped data without permission
 > and caps requests at 20/min — worth reviewing before running this publicly;
