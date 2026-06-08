@@ -43,7 +43,30 @@ To keep it that way:
 - Optional hardening: register the runner as **ephemeral** (`--ephemeral`) so
   each job gets a clean checkout, and/or restrict it to this one repo.
 
-## Setup (Linux, ~10 minutes)
+## Quick install (one command)
+
+On your always-on home machine (Linux/macOS), clone the repo and run the setup
+script. First check that this machine's IP is actually unblocked — if it isn't,
+a runner here won't help and the script tells you so without installing
+anything:
+
+```bash
+# 1. Does this machine's IP reach the sources? (no install, just a probe)
+scripts/setup_runner.sh --check
+
+# 2. If that passed, grab a registration token from
+#    https://github.com/skerk001/reign-web/settings/actions/runners/new
+#    then install + register + service-install in one go:
+scripts/setup_runner.sh --token <TOKEN>
+```
+
+The script preflights source reachability, downloads the matching runner
+release, registers it with the `reign-refresh` label, and installs it as a
+service. When it finishes, do the two clicks it prints: set the `RUNNER_LABEL`
+repo variable and run the workflow once to confirm. Windows users (or anyone who
+wants to understand each step) can follow the manual walkthrough below.
+
+## Setup (Linux, ~10 minutes) — manual equivalent
 
 1. **Provision the machine** with Python 3 and Node 20:
    ```bash
