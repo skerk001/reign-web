@@ -153,6 +153,9 @@ def main():
     rcs = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(rcs)
     year = args.year or rcs.current_season_year()
+    # nba.com is queried by END year (season_label); the dataset stores seasons
+    # by START year, so clutch merges onto season_year rows (= year - 1).
+    season_year = year - 1
     print(f'fetching {season_label(year)} regular-season clutch')
 
     try:
@@ -193,7 +196,7 @@ def main():
     modern = json.load(open(MODERN))
     matched = 0
     for r in modern:
-        if r.get('year') != year or r.get('type') != 'RS':
+        if r.get('year') != season_year or r.get('type') != 'RS':
             continue
         hit = clutch.get(norm(r['name']))
         if hit:
@@ -201,8 +204,8 @@ def main():
             matched += 1
     json.dump(modern, open(MODERN, 'w'), indent=0)
     print(f'wrote {os.path.relpath(MODERN)}: clutch merged onto {matched} of '
-          f'{sum(1 for r in modern if r.get("year") == year and r.get("type") == "RS")} '
-          f'{year} RS rows. Now rebuild career_clutch + derived/index files.')
+          f'{sum(1 for r in modern if r.get("year") == season_year and r.get("type") == "RS")} '
+          f'{season_label(year)} RS rows. Now rebuild career_clutch + derived/index files.')
     return 0
 
 

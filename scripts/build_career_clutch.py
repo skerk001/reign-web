@@ -51,12 +51,14 @@ def load_rs_clutch():
 
 def rs_aggregate(rows):
     gp = sum(r['clutch_gp'] for r in rows)
-    tot_pts = sum(r.get('clutch_tot_pts', 0) for r in rows)
-    tot_pm = sum(r.get('clutch_tot_pm', 0) for r in rows)
-    tot_ast = sum(r.get('clutch_tot_ast', 0) for r in rows)
+    # `(x or 0)` not `.get(x, 0)`: these fields can be present-but-null, which
+    # .get() returns as None and breaks the arithmetic below.
+    tot_pts = sum((r.get('clutch_tot_pts') or 0) for r in rows)
+    tot_pm = sum((r.get('clutch_tot_pm') or 0) for r in rows)
+    tot_ast = sum((r.get('clutch_tot_ast') or 0) for r in rows)
     # games-weighted win pct (clutch wins aren't stored per season, so this is
     # weighted from the rounded per-season clutch_wpct -- exact to ~0.01)
-    wpct = sum(r.get('clutch_wpct', 0) * r['clutch_gp'] for r in rows) / gp if gp else 0
+    wpct = sum((r.get('clutch_wpct') or 0) * r['clutch_gp'] for r in rows) / gp if gp else 0
     teams, eras, years = [], [], []
     for r in sorted(rows, key=lambda x: x['year']):
         if r.get('team') and r['team'] not in teams:
