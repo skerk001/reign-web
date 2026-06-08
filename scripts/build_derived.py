@@ -216,6 +216,18 @@ def main():
         print('VERIFY: set must be identical and drift <= 0.01 (float rounding)')
         return
 
+    if '--full' in sys.argv:
+        # Full from-scratch rebuild. Use this when season rows were added/changed
+        # outside the def-adjustment path (e.g. a nightly current-season refresh),
+        # where the selective merge below -- keyed on the def_adjusted tag -- would
+        # leave careers/stretches stale. Float-rounding churn across unchanged rows
+        # is irrelevant for an automated commit.
+        print('full rebuild (--full): regenerating every derived file from scratch')
+        for name, obj in fresh.items():
+            open(os.path.join(DATA, name + '.json'), 'w').write(dump(obj))
+            print(f'wrote {name}.json ({len(obj)} rows)')
+        return
+
     n_aff = sum(1 for f in fresh.values() for r in f if r['name'] in affected)
     print(f'{len(affected)} affected players; merging fresh records for them only')
     for name, obj in fresh.items():

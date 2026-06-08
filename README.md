@@ -122,6 +122,64 @@ Additional: `awards.json`, `stretches_rs3/rs5/po3/po5.json`, `career_avg_rs/po.j
 - `scripts/build_derived.py` — Rebuild stretches / careers / career_avg from the season files
 - `scripts/backfill_modern_advanced.py` — Fetch missing modern advanced stats from Basketball-Reference
 - `scripts/generate_paper.py` — Generate the methodology PDF (with figures)
+- `scripts/refresh_current_season.py` — Scrape the in-progress season from Basketball-Reference and score it with the published formulas
+- `scripts/backfill_clutch.py` — Pull current-season clutch stats from the stats.nba.com API
+- `scripts/build_career_clutch.py` — Fold new clutch games into the `career_clutch.json` leaderboard
+- `scripts/reign_score.py` — Apply `reign_formulas.json` to score a row (the forward direction of `derive_formulas.py`)
+- `scripts/refresh_all.sh` — One-shot nightly refresh: scrape → score → clutch → rebuild every derived/index file
+
+## Daily Auto-Refresh
+
+The live site keeps itself current without manual work. A scheduled GitHub
+Action (`.github/workflows/refresh-data.yml`) runs every morning (11:00 UTC,
+after the prior night's games are final) and:
+
+1. **Scrapes** the in-progress season's per-game + advanced tables from
+   Basketball-Reference (`refresh_current_season.py`).
+2. **Scores** every player with the frozen per-era REIGN formulas
+   (`reign_score.py` applying `reign_formulas.json`) — so new seasons land on
+   the exact same ruler as the historical 80 years.
+3. **Pulls clutch** stats for the season from the stats.nba.com API
+   (`backfill_clutch.py`) and folds new clutch games into the clutch
+   leaderboard (`build_career_clutch.py`).
+4. **Rebuilds** the derived data the site loads — careers, stretches,
+   career averages, the leaderboard index, and the visualization payload.
+5. **Commits** the changed `public/data/*.json` back to the repo, which
+   triggers the host (Netlify/Vercel) to redeploy. A no-change night is a
+   clean no-op — nothing is committed.
+
+Only the current season is refreshed each run: the historical eras (1946–2012)
+are frozen and never change, so nightly diffs stay small. Run it by hand with:
+
+```bash
+npm run refresh             # auto-detect the current season
+npm run refresh -- --year 2026
+```
+
+> **Scoring:** new numbers use the published reconstructed formulas (the model
+> the repo ships), so they carry that model's reconstruction error, not the
+> original uncommitted pipeline's.
+>
+> **Clutch:** only regular-season clutch is refreshed (the only clutch the
+> season files carry); playoff clutch in `career_clutch.json` is preserved
+> from the committed data. New current-season players join the clutch
+> leaderboard once they cross its ~10-game floor.
+>
+> **⚠️ Source access from CI:** both Basketball-Reference and stats.nba.com
+> aggressively block **datacenter / cloud IPs** — which is exactly what
+> GitHub-hosted runners use — so a scheduled run may get HTTP 403 even with
+> correct browser headers. Each fetcher fails *loud and writes nothing* rather
+> than committing partial data; the clutch step is best-effort so a clutch
+> block doesn't abort the core REIGN refresh. If runs are blocked, the fix is
+> a non-datacenter egress: a self-hosted runner on a **residential** IP
+> (a cloud VM stays blocked) — see
+> [`docs/SELF_HOSTED_RUNNER.md`](docs/SELF_HOSTED_RUNNER.md) — or routing the
+> fetch through a proxy. The workflow honors a `RUNNER_LABEL` repo variable, so
+> pointing it at your runner needs no code change.
+> Additionally, Sports-Reference's [data-use policy](https://www.sports-reference.com/data_use.html)
+> asks that you not build tools/sites on their scraped data without permission
+> and caps requests at 20/min — worth reviewing before running this publicly;
+> the nba.com stats API is the less restrictive source for the same numbers.
 
 ## License
 

@@ -3,3 +3,4 @@ dist
 .DS_Store
 *.local
 bundle-stats.html
+__pycache__

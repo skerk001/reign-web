@@ -8,6 +8,7 @@
     "build": "vite build",
     "build:rankings": "node scripts/build_rankings_index.js",
     "build:viz": "node scripts/build_viz.js",
+    "refresh": "bash scripts/refresh_all.sh",
     "lint": "eslint .",
     "preview": "vite preview"
   },
