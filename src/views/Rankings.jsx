@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { formatReign } from '../utils/format';
 import { normalize } from '../utils/fuzzySearch';
 import { useJSON, useAllSeasons } from '../hooks/useData';
@@ -24,18 +24,45 @@ function HeatTd({ v, bgFn, children, cls }) {
   return <td className={cls || ''} style={{background: bg, color}}>{children}</td>;
 }
 
+// Initial leaderboard state from the URL, so filtered views are shareable
+// (?v=rankings&type=PO&win=3yr&era=Modern&data=clutch&cwin=career).
+function urlState() {
+  const q = new URLSearchParams(location.search);
+  return {
+    type: q.get('type') === 'PO' ? 'PO' : 'RS',
+    win: ['1yr', '3yr', '5yr', 'career'].includes(q.get('win')) ? q.get('win') : '1yr',
+    era: ERA_OPTIONS.includes(q.get('era')) ? q.get('era') : 'All',
+    data: q.get('data') === 'clutch' ? 'clutch' : 'standard',
+    cwin: q.get('cwin') === 'career' ? 'career' : 'season',
+  };
+}
+
 export default function Rankings({ onPlayerClick }) {
-  const [seasonType, setSeasonType] = useState('RS');
-  const [window, setWindow] = useState('1yr');
-  const [era, setEra] = useState('All');
+  const init = urlState();
+  const [seasonType, setSeasonType] = useState(init.type);
+  const [window, setWindow] = useState(init.win);
+  const [era, setEra] = useState(init.era);
   const [search, setSearch] = useState('');
   const [sortCol, setSortCol] = useState('reign');
   const [sortDir, setSortDir] = useState('desc');
   const [count, setCount] = useState(100);
-  const [dataView, setDataView] = useState('standard'); // standard | clutch
+  const [dataView, setDataView] = useState(init.data); // standard | clutch
   const [qualified, setQualified] = useState(true); // 1yr view: hide < 15 MPG seasons
-  const [clutchWindow, setClutchWindow] = useState('season'); // season | career
+  const [clutchWindow, setClutchWindow] = useState(init.cwin); // season | career
   const [clutchSort, setClutchSort] = useState('totals'); // totals | averages
+
+  // Keep the URL shareable as filters change (this component shadows the
+  // global `window`, hence bare location/history).
+  useEffect(() => {
+    const p = new URLSearchParams();
+    if (seasonType !== 'RS') p.set('type', seasonType);
+    if (window !== '1yr' && dataView === 'standard') p.set('win', window);
+    if (era !== 'All') p.set('era', era);
+    if (dataView !== 'standard') p.set('data', dataView);
+    if (dataView === 'clutch' && clutchWindow !== 'season') p.set('cwin', clutchWindow);
+    const qs = p.toString();
+    history.replaceState(null, '', qs ? `?v=rankings&${qs}` : location.pathname);
+  }, [seasonType, window, era, dataView, clutchWindow]);
 
   // Load data based on toggles
   const careerClutchPath = '/data/career_clutch.json';

@@ -36,6 +36,7 @@ USAGE
 import argparse
 import json
 import os
+import re
 import sys
 import unicodedata
 import urllib.parse
@@ -96,8 +97,11 @@ def parse_response(payload):
 
 
 def norm(name):
-    """Accent/punctuation-insensitive key for joining bref vs nba.com names."""
-    s = unicodedata.normalize('NFKD', name or '')
+    """Accent/punctuation-insensitive key for joining bref vs nba.com names.
+    Career-span suffixes from split_name_collisions.py are stripped -- joins
+    are per-season, where the plain name is unambiguous."""
+    name = re.sub(r'\s*\(\d{4}-\d{2}\)$', '', name or '')
+    s = unicodedata.normalize('NFKD', name)
     s = ''.join(c for c in s if not unicodedata.combining(c))
     return ''.join(c for c in s.lower() if c.isalnum())
 

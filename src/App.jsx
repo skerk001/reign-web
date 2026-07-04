@@ -46,7 +46,7 @@ export default function App() {
   // Keep the URL shareable for every view: ?v=player&p=Name deep-links a
   // profile; Compare writes its own p1/p2/p3 params via updateURL.
   useEffect(() => {
-    if (view === 'compare') return;
+    if (view === 'compare' || view === 'rankings') return; // these views manage their own params
     const params = new URLSearchParams();
     if (view !== 'rankings') params.set('v', view);
     if (view === 'player' && player) params.set('p', player);
