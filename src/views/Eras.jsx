@@ -1,9 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { formatReign } from '../utils/format';
-import { useJSON, useAllSeasons } from '../hooks/useData';
+import { useAllSeasons } from '../hooks/useData';
 import { PlayerCrest } from '../components/PlayerArt';
 import EraBadge from '../components/EraBadge';
-import Loading from '../components/Loading';
+import Loading, { LoadError } from '../components/Loading';
 import './Eras.css';
 
 const ERAS = [
@@ -42,7 +42,7 @@ function TopPlayers({ players, eraColor }) {
       {players.slice(0, 10).map((p, i) => (
         <div key={p.name + p.year} className={`era-tp-row${i < 3 ? ' era-tp-top3' : ''}`}>
           <span className="era-tp-rank" style={i < 3 ? { color: eraColor } : undefined}>
-            {i === 0 ? '👑' : `#${i + 1}`}
+            #{i + 1}
           </span>
           <span className="era-tp-name">{p.name}</span>
           <span className="era-tp-year">{p.year}-{String(p.year + 1).slice(-2)}</span>
@@ -196,8 +196,7 @@ function EraComparisonTable({ eraStats }) {
 
 /* ═══ MAIN ERA EXPLORER ═══ */
 export default function EraExplorer() {
-  const { data: seasons, loading } = useAllSeasons();
-  const { data: awards } = useJSON('/data/awards.json');
+  const { data: seasons, loading, error, retry } = useAllSeasons();
   const [selectedEra, setSelectedEra] = useState(null);
   const [seasonType, setSeasonType] = useState('RS');
 
@@ -248,6 +247,7 @@ export default function EraExplorer() {
     return tops;
   }, [seasons, seasonType]);
 
+  if (error) return <LoadError message="Couldn't load the season data." onRetry={retry} />;
   if (loading) return <Loading message="Loading era data..." />;
 
   const activeEra = selectedEra ? ERAS.find(e => e.id === selectedEra) : null;

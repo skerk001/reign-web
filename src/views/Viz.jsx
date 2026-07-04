@@ -1,5 +1,5 @@
-import { useState, useRef, useMemo } from 'react';
-import Loading from '../components/Loading';
+import { useState, useMemo } from 'react';
+import Loading, { LoadError } from '../components/Loading';
 import { formatReign } from '../utils/format';
 import { useJSON } from '../hooks/useData';
 import { PlayerCrest } from '../components/PlayerArt';
@@ -34,10 +34,11 @@ function Tip({ pos, children }) {
 }
 
 export default function Visualizations() {
-  const { data: viz, loading } = useJSON('/data/viz.json');
+  const { data: viz, loading, error, retry } = useJSON('/data/viz.json');
   const [seasonType, setSeasonType] = useState('RS');
   const [eraFilter, setEraFilter] = useState('All');
 
+  if (error) return <LoadError message="Couldn't load the visualizations data." onRetry={retry} />;
   if (loading || !viz) return <Loading message="Loading visualizations..." />;
 
   return (
@@ -123,6 +124,14 @@ function LeagueEvolution({ data }) {
   const tsPath = data.map(d => `${xs(d.year).toFixed(1)},${tsY(d.avgTS).toFixed(1)}`).join(' ');
   const ppPath = data.map(d => `${xs(d.year).toFixed(1)},${ppY(d.avgPPG).toFixed(1)}`).join(' ');
   const bands = [['Pioneer', 1946, 1962], ['Legacy', 1963, 1995], ['Classic', 1996, 2012], ['Modern', 2013, 2026]];
+  // Rule changes that reshaped the league — annotated on the chart itself.
+  const RULES = [
+    [1954, '24-sec shot clock'],
+    [1976, 'ABA merger'],
+    [1979, '3-point line'],
+    [2001, 'Zone defense legal'],
+    [2004, 'Hand-check ban'],
+  ];
   const onMove = e => {
     const { x, px, py } = vbPoint(e, W, H);
     const yr = Math.round(y0 + ((x - P.l) / (W - P.l - P.r)) * (y1 - y0));
@@ -130,13 +139,20 @@ function LeagueEvolution({ data }) {
     if (idx >= 0) setHi({ d: data[idx], px, py });
   };
   return (
-    <Card span="wide" title="League Evolution" desc="Scoring (gold) and shooting efficiency (mint) across 80 years — era bands mark the regime changes.">
+    <Card span="wide" title="League Evolution" desc="Scoring (gold) and shooting efficiency (mint) across 80 years — era bands and rule changes mark the regime shifts.">
       <div className="vchart" onMouseMove={onMove} onMouseLeave={() => setHi(null)}>
         <svg viewBox={`0 0 ${W} ${H}`} className="vsvg">
           {bands.map(([era, a, b]) => <rect key={era} x={xs(Math.max(a, y0))} y={P.t} width={xs(Math.min(b, y1)) - xs(Math.max(a, y0))} height={H - P.t - P.b} fill={EC[era]} opacity={0.07} />)}
           {tsTicks.map(v => <g key={v}><line x1={P.l} y1={tsY(v)} x2={W - P.r} y2={tsY(v)} stroke="rgba(135,137,192,0.1)" /><text x={P.l - 8} y={tsY(v) + 4} textAnchor="end" className="vaxis" fill={MINT}>{v}</text></g>)}
           {ppTicks.map(v => <text key={v} x={W - P.r + 8} y={ppY(v) + 4} className="vaxis" fill={GOLD}>{v}</text>)}
           {bands.map(([era, a]) => a >= y0 && a <= y1 && <text key={era} x={xs(a) + 4} y={P.t + 13} className="vband">{era}</text>)}
+          {RULES.map(([yr, label], i) => yr >= y0 && yr <= y1 && (
+            <g key={yr} opacity="0.85">
+              <line x1={xs(yr)} y1={P.t + 34} x2={xs(yr)} y2={H - P.b} stroke="rgba(244,246,255,0.28)" strokeDasharray="2 4" />
+              <circle cx={xs(yr)} cy={P.t + 34} r="2.2" fill="#c9cdec" />
+              <text x={xs(yr) + 5} y={P.t + (i % 2 ? 28 : 40)} className="vrule">{label} '{String(yr + 1).slice(-2)}</text>
+            </g>
+          ))}
           <polyline points={ppPath} fill="none" stroke={GOLD} strokeWidth="3" strokeLinejoin="round" />
           <polyline points={tsPath} fill="none" stroke={MINT} strokeWidth="3" strokeLinejoin="round" />
           {data.filter((_, i) => i % 6 === 0).map(d => <text key={d.year} x={xs(d.year)} y={H - 14} textAnchor="middle" className="vaxis">'{String(d.year + 1).slice(-2)}</text>)}
@@ -205,7 +221,7 @@ function YearlyTop3({ data }) {
               </g>
             );
           })}
-          {data.filter((_, i) => i % 6 === 0).map((d, i) => <text key={d.year} x={P.l + data.indexOf(d) * bw + bw / 2} y={H - 14} textAnchor="middle" className="vaxis">'{String(d.year + 1).slice(-2)}</text>)}
+          {data.filter((_, i) => i % 6 === 0).map(d => <text key={d.year} x={P.l + data.indexOf(d) * bw + bw / 2} y={H - 14} textAnchor="middle" className="vaxis">'{String(d.year + 1).slice(-2)}</text>)}
         </svg>
         {hi && <Tip pos={hi}><b>'{String(hi.d.year + 1).slice(-2)} Season</b>{hi.d.top.map((t, j) => <span key={j} style={{ color: shades[j] === '#a7f3d0' ? '#a7f3d0' : shades[j] === '#10B981' ? '#10B981' : MINT }}>#{j + 1} {t.name} · +{t.reign}</span>)}</Tip>}
       </div>

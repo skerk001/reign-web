@@ -21,13 +21,16 @@ function parseURL() {
   if (view === 'compare' && (p1 || p2)) {
     return { view: 'compare', players: [p1 || null, p2 || null, p3 || null].filter(Boolean) };
   }
+  if (view === 'player' && params.get('p')) {
+    return { view: 'player', player: params.get('p'), players: [] };
+  }
   if (view) return { view, players: [] };
   return null;
 }
 
 export default function App() {
   const [view, setView] = useState(() => parseURL()?.view || 'rankings');
-  const [player, setPlayer] = useState(null);
+  const [player, setPlayer] = useState(() => parseURL()?.player || null);
   const [comparePlayer, setComparePlayer] = useState(null);
   const [initialCompare, setInitialCompare] = useState(() => parseURL()?.players || null);
 
@@ -40,13 +43,16 @@ export default function App() {
     window.history.replaceState(null, '', '?' + params.toString());
   }, []);
 
-  const clearURL = useCallback(() => {
-    window.history.replaceState(null, '', window.location.pathname);
-  }, []);
-
+  // Keep the URL shareable for every view: ?v=player&p=Name deep-links a
+  // profile; Compare writes its own p1/p2/p3 params via updateURL.
   useEffect(() => {
-    if (view !== 'compare') clearURL();
-  }, [view, clearURL]);
+    if (view === 'compare') return;
+    const params = new URLSearchParams();
+    if (view !== 'rankings') params.set('v', view);
+    if (view === 'player' && player) params.set('p', player);
+    const qs = params.toString();
+    window.history.replaceState(null, '', qs ? '?' + qs : window.location.pathname);
+  }, [view, player]);
 
   return (
     <>
@@ -54,7 +60,7 @@ export default function App() {
       <main>
         <Suspense fallback={<Loading />}>
           {view === 'rankings' && <Rankings onPlayerClick={n => { setPlayer(n); setView('player'); }} />}
-          {view === 'player' && <Players initialPlayer={player} onCompare={n => { setComparePlayer(n); setView('compare'); }} />}
+          {view === 'player' && <Players initialPlayer={player} onPlayerChange={setPlayer} onCompare={n => { setComparePlayer(n); setView('compare'); }} />}
           {view === 'compare' && <Compare initialPlayer={comparePlayer} initialCompare={initialCompare} onClearInitial={() => { setComparePlayer(null); setInitialCompare(null); }} onPlayersChange={updateURL} />}
           {view === 'eras' && <EraExplorer />}
           {view === 'viz' && <Visualizations />}

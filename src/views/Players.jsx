@@ -3,10 +3,10 @@ import { formatReign } from '../utils/format';
 import { fuzzySearch } from '../utils/fuzzySearch';
 import { useJSON, useAllSeasons } from '../hooks/useData';
 import { PlayerCrest, CareerSkyline } from '../components/PlayerArt';
-import { Constellation, StatBloom } from '../components/PlayerCharts';
+import { PercentileBars } from '../components/PlayerCharts';
 import { reignBg, offBg, defBg, relTsBg, clutchBg, textColor } from '../utils/heatmap';
 import EraBadge from '../components/EraBadge';
-import Loading from '../components/Loading';
+import Loading, { LoadError } from '../components/Loading';
 import './Players.css';
 
 function TsDiffCell({ v }) {
@@ -47,11 +47,13 @@ function Sparkline({ values, w = 100, h = 28, color = '#5DFDCB' }) {
   );
 }
 
-export default function Players({ initialPlayer, onCompare }) {
-  const { data: seasons, loading } = useAllSeasons();
+export default function Players({ initialPlayer, onCompare, onPlayerChange }) {
+  const { data: seasons, loading, error, retry } = useAllSeasons();
   const [selected, setSelected] = useState(initialPlayer || null);
   const [search, setSearch] = useState('');
   useEffect(() => { if (initialPlayer) setSelected(initialPlayer); }, [initialPlayer]);
+  // Report selection changes so App can keep a shareable ?v=player&p=... URL.
+  useEffect(() => { if (onPlayerChange) onPlayerChange(selected); }, [selected, onPlayerChange]);
 
   const allNames = useMemo(() => {
     if (!seasons) return [];
@@ -105,6 +107,7 @@ export default function Players({ initialPlayer, onCompare }) {
     }).filter(Boolean);
   }, [seasons, playerPeaks]);
 
+  if (error) return <LoadError message="Couldn't load the player data." onRetry={retry} />;
   if (loading) return <Loading message="Loading player data..." />;
   if (selected) return <PlayerProfile name={selected} seasons={seasons} onBack={() => setSelected(null)} onCompare={onCompare} />;
 
@@ -133,8 +136,6 @@ export default function Players({ initialPlayer, onCompare }) {
           <div className="pl-grid">
             {featuredData.map(c => {
               const eraColor = c.eras?.[0] === 'Modern' ? '#10B981' : c.eras?.[0] === 'Classic' ? '#2563EB' : c.eras?.[0] === 'Legacy' ? '#D97706' : '#8789C0';
-              const tier = c.rp >= 25 ? 'S' : c.rp >= 20 ? 'A' : c.rp >= 15 ? 'B' : c.rp >= 10 ? 'C' : 'D';
-              const tierColor = tier === 'S' ? '#065f46' : tier === 'A' ? '#10B981' : tier === 'B' ? '#D97706' : tier === 'C' ? '#2563EB' : '#8789C0';
               return (
               <button key={c.name} className="pl-card" onClick={() => setSelected(c.name)} style={{borderTopColor: eraColor}}>
                 <div className="pc-top">
@@ -143,7 +144,6 @@ export default function Players({ initialPlayer, onCompare }) {
                     <div className="pc-name">{c.name}</div>
                     <div className="pc-meta">{c.teams?.slice(0,3).join(' · ')} · {c.ys}–{String(c.ye+1).slice(-2)}</div>
                   </div>
-                  <div className="pc-tier" style={{background: tierColor}}>{tier}</div>
                 </div>
                 <div className="pc-body">
                   <div className="pc-numbers">
@@ -178,19 +178,17 @@ function PlayerProfile({ name, seasons, onBack, onCompare }) {
   const playerAwards = useMemo(() => awards?.find(a => a.name === name) || null, [awards, name]);
   const rs = useMemo(() => seasons?.filter(r => r.name === name && r.type === 'RS').sort((a,b) => a.year - b.year) || [], [name, seasons]);
   const po = useMemo(() => seasons?.filter(r => r.name === name && r.type === 'PO').sort((a,b) => a.year - b.year) || [], [name, seasons]);
-  if (!rs.length) return <div className="pl"><div className="pl-wrap"><p>No data for {name}</p></div></div>;
-
-  const peak = rs.reduce((a,b) => a.reign > b.reign ? a : b);
+  const peak = rs.length ? rs.reduce((a,b) => a.reign > b.reign ? a : b) : null;
   const peakPO = po.length ? po.reduce((a,b) => a.reign > b.reign ? a : b) : null;
-  const avgReign = rs.reduce((s,r) => s + r.reign, 0) / rs.length;
+  const avgReign = rs.length ? rs.reduce((s,r) => s + r.reign, 0) / rs.length : 0;
   const teams = [...new Set(rs.map(r => r.team))];
   const eras = [...new Set(rs.map(r => r.era))];
-  const years = `${rs[0].year}–${String(rs[rs.length-1].year+1).slice(-2)}`;
+  const years = rs.length ? `${rs[0].year}–${String(rs[rs.length-1].year+1).slice(-2)}` : '';
 
-  // Compute skill profile for radar chart
+  // Skill profile percentiles (vs all qualifying RS seasons)
   const allRS = useMemo(() => seasons?.filter(r => r.type === 'RS' && (r.min || 0) > 15) || [], [seasons]);
   const radarData = useMemo(() => {
-    if (!allRS.length) return null;
+    if (!allRS.length || !peak) return null;
     const src = radarMode === 'peak' ? peak : {
       pts: rs.reduce((s,r) => s + (r.pts||0), 0) / rs.length,
       tsp: rs.reduce((s,r) => s + (r.tsp||0), 0) / rs.length,
@@ -225,6 +223,8 @@ function PlayerProfile({ name, seasons, onBack, onCompare }) {
 
     return categories;
   }, [allRS, peak, rs, radarMode]);
+
+  if (!rs.length) return <div className="pl"><div className="pl-wrap"><p>No data for {name}</p></div></div>;
 
   return (
     <div className="pl">
@@ -267,19 +267,27 @@ function PlayerProfile({ name, seasons, onBack, onCompare }) {
           <span className="prof-skyline-cap">Career Skyline · each tower a season, height = REIGN, color = team</span>
         </div>
 
-        {/* Trophy Shelf */}
-        {playerAwards && (playerAwards.mvp > 0 || playerAwards.fmvp > 0 || playerAwards.dpoy > 0 || playerAwards.all_nba_total > 0 || playerAwards.all_star > 0) && (
-          <div className="prof-awards">
-            {playerAwards.mvp > 0 && <div className="prof-award"><span className="prof-award-icon">🏆</span><span className="prof-award-count">{playerAwards.mvp}×</span><span className="prof-award-label">MVP</span></div>}
-            {playerAwards.fmvp > 0 && <div className="prof-award"><span className="prof-award-icon">🏆</span><span className="prof-award-count">{playerAwards.fmvp}×</span><span className="prof-award-label">Finals MVP</span></div>}
-            {playerAwards.dpoy > 0 && <div className="prof-award"><span className="prof-award-icon">🛡️</span><span className="prof-award-count">{playerAwards.dpoy}×</span><span className="prof-award-label">DPOY</span></div>}
-            {playerAwards.roy > 0 && <div className="prof-award"><span className="prof-award-icon">🌟</span><span className="prof-award-count">1×</span><span className="prof-award-label">ROY</span></div>}
-            {playerAwards.all_nba_total > 0 && <div className="prof-award"><span className="prof-award-icon">⭐</span><span className="prof-award-count">{playerAwards.all_nba_total}×</span><span className="prof-award-label">All-NBA</span></div>}
-            {playerAwards.all_def_total > 0 && <div className="prof-award"><span className="prof-award-icon">🛡️</span><span className="prof-award-count">{playerAwards.all_def_total}×</span><span className="prof-award-label">All-Def</span></div>}
-            {playerAwards.all_star > 0 && <div className="prof-award"><span className="prof-award-icon">⭐</span><span className="prof-award-count">{playerAwards.all_star}×</span><span className="prof-award-label">All-Star</span></div>}
-            {playerAwards.mvp_share_peak > 0 && <div className="prof-award"><span className="prof-award-icon">📊</span><span className="prof-award-count">{playerAwards.mvp_share_peak.toFixed(3)}</span><span className="prof-award-label">Peak MVP Share</span></div>}
-          </div>
-        )}
+        {/* Honors — compact reference-style strip */}
+        {(() => {
+          if (!playerAwards) return null;
+          const honors = [
+            [playerAwards.mvp, 'MVP'], [playerAwards.fmvp, 'Finals MVP'], [playerAwards.dpoy, 'DPOY'],
+            [playerAwards.roy > 0 ? 1 : 0, 'ROY'], [playerAwards.all_nba_total, 'All-NBA'],
+            [playerAwards.all_def_total, 'All-Def'], [playerAwards.all_star, 'All-Star'],
+          ].filter(([n]) => n > 0);
+          if (!honors.length) return null;
+          return (
+            <div className="prof-honors">
+              <span className="prof-honors-label">Honors</span>
+              {honors.map(([n, label]) => (
+                <span className="prof-honor" key={label}><b>{n}×</b> {label}</span>
+              ))}
+              {playerAwards.mvp_share_peak > 0 && (
+                <span className="prof-honor prof-honor-sub"><b>{playerAwards.mvp_share_peak.toFixed(3)}</b> peak MVP share</span>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Skill Profile Radar */}
         {radarData && (
@@ -291,11 +299,9 @@ function PlayerProfile({ name, seasons, onBack, onCompare }) {
                 <button className={`st-btn${radarMode==='career'?' on':''}`} onClick={()=>setRadarMode('career')}>Career Avg</button>
               </div>
             </div>
-            <StatBloom data={radarData} />
+            <PercentileBars data={radarData} />
           </div>
         )}
-
-        <div className="prof-section"><h2 className="prof-section-title">Career Constellation</h2><Constellation rs={rs} po={po} /></div>
 
         <div className="prof-section">
           <div className="prof-section-header">
@@ -404,10 +410,35 @@ function ClutchPMCell({ v }) {
 // Combined "Season Log": RS + PO REIGN/OFF/DEF heat cells at a glance, plus the
 // box scores for the toggled type (RS or PO).
 function SeasonLog({ rs, po, isPO }) {
-  const years = [...new Set([...rs, ...po].map(r => r.year))].sort((a, b) => a - b);
+  const [sortKey, setSortKey] = useState('year');
+  const [sortDir, setSortDir] = useState('asc');
   const rsByYr = Object.fromEntries(rs.map(r => [r.year, r]));
   const poByYr = Object.fromEntries(po.map(r => [r.year, r]));
-  const hasPreTracking = years[0] < 1973;
+  const act = y => (isPO ? poByYr : rsByYr)[y];
+  // column key -> value accessor for a season-year
+  const acc = {
+    year: y => y,
+    rsR: y => rsByYr[y]?.reign, rsO: y => rsByYr[y]?.reign_off, rsD: y => rsByYr[y]?.reign_def,
+    poR: y => poByYr[y]?.reign, poO: y => poByYr[y]?.reign_off, poD: y => poByYr[y]?.reign_def,
+    pts: y => act(y)?.pts, reb: y => act(y)?.reb, ast: y => act(y)?.ast,
+    stl: y => act(y)?.stl, blk: y => act(y)?.blk,
+    fgp: y => act(y)?.fgp, fg3p: y => act(y)?.fg3p, tsp: y => act(y)?.tsp, gp: y => act(y)?.gp,
+  };
+  const allYears = [...new Set([...rs, ...po].map(r => r.year))];
+  const years = allYears.sort((a, b) => {
+    const av = acc[sortKey]?.(a) ?? -999, bv = acc[sortKey]?.(b) ?? -999;
+    return sortDir === 'asc' ? av - bv : bv - av;
+  });
+  const handleSort = k => {
+    if (sortKey === k) setSortDir(d => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortKey(k); setSortDir(k === 'year' ? 'asc' : 'desc'); }
+  };
+  const th = (label, k, cls) => (
+    <th className={cls || ''} onClick={() => handleSort(k)} style={{ cursor: 'pointer', userSelect: 'none' }} title={`Sort by ${label}`}>
+      {label}{sortKey === k ? (sortDir === 'desc' ? ' ▼' : ' ▲') : ''}
+    </th>
+  );
+  const hasPreTracking = Math.min(...allYears) < 1973;
   const hasPioneer = rs.some(r => r.era === 'Pioneer');
   const Heat = ({ v, fn }) => {
     if (v == null) return <td className="st-r sl-heat sl-na">—</td>;
@@ -425,11 +456,11 @@ function SeasonLog({ rs, po, isPO }) {
       )}
       <div className="st-scroll"><table className="st">
         <thead><tr>
-          <th>Season</th><th>Era</th>
-          <th className="st-r sl-grp-rs">RS R</th><th className="st-r sl-grp-rs">RS O</th><th className="st-r sl-grp-rs">RS D</th>
-          <th className="st-r sl-grp-po">PO R</th><th className="st-r sl-grp-po">PO O</th><th className="st-r sl-grp-po">PO D</th>
-          <th className="st-r">PPG</th><th className="st-r">RPG</th><th className="st-r">APG</th><th className="st-r">SPG</th><th className="st-r">BPG</th>
-          <th className="st-r">FG%</th><th className="st-r">3P%</th><th className="st-r">TS%</th><th className="st-r">GP</th>
+          {th('Season', 'year')}<th>Era</th>
+          {th('RS R', 'rsR', 'st-r sl-grp-rs')}{th('RS O', 'rsO', 'st-r sl-grp-rs')}{th('RS D', 'rsD', 'st-r sl-grp-rs')}
+          {th('PO R', 'poR', 'st-r sl-grp-po')}{th('PO O', 'poO', 'st-r sl-grp-po')}{th('PO D', 'poD', 'st-r sl-grp-po')}
+          {th('PPG', 'pts', 'st-r')}{th('RPG', 'reb', 'st-r')}{th('APG', 'ast', 'st-r')}{th('SPG', 'stl', 'st-r')}{th('BPG', 'blk', 'st-r')}
+          {th('FG%', 'fgp', 'st-r')}{th('3P%', 'fg3p', 'st-r')}{th('TS%', 'tsp', 'st-r')}{th('GP', 'gp', 'st-r')}
         </tr></thead>
         <tbody>{years.map(y => {
           const r = rsByYr[y], p = poByYr[y], a = isPO ? p : r, era = (r || p)?.era || '';

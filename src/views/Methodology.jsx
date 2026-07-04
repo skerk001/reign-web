@@ -1,4 +1,4 @@
-import { reignBg, offBg, defBg, textColor } from '../utils/heatmap';
+import { reignBg, textColor } from '../utils/heatmap';
 import './Methodology.css';
 
 const ERA_MODELS = [
@@ -62,8 +62,9 @@ export default function Methodology() {
           <h2 className="mth-h2">The core idea: era-normalized z-scores</h2>
           <p className="mth-body">
             Basketball in 1960 barely resembles basketball in 2024 — pace, three-pointers, and even which stats were
-            recorded all changed. So REIGN doesn't compare raw numbers across time. Instead, every season is scored as a
-            <b> z-score within a rolling 5-year window</b> — i.e., relative to its own moment in history.
+            recorded all changed. So REIGN doesn't compare raw numbers across time. Instead, every statistic is
+            <b> standardized against the player's own era</b> — a z-score relative to the league that player actually
+            competed in, not to a fixed all-time yardstick.
           </p>
           <div className="mth-callout">
             A <b className="mth-reign">+20 REIGN</b> means the same level of relative dominance whether it was earned in

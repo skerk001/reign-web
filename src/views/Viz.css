@@ -66,6 +66,7 @@
 .vaxis { font-family: var(--font-mono); font-size: 12px; font-weight: 700; fill: #8789C0; }
 .vaxislbl { font-family: var(--font-body); font-size: 12px; font-weight: 800; fill: #6f7290; letter-spacing: 0.5px; }
 .vband { font-family: var(--font-body); font-size: 12px; font-weight: 800; fill: #6f7290; letter-spacing: 0.5px; text-transform: uppercase; }
+.vrule { font-size: 10.5px; font-weight: 800; fill: #c9cdec; font-family: var(--font-body); }
 .vquad { font-family: var(--font-body); font-size: 12px; font-weight: 800; fill: rgba(180,184,210,0.5); letter-spacing: 1px; text-anchor: middle; }
 .vname { font-family: var(--font-body); font-size: 12px; font-weight: 700; fill: #c9cdec; }
 .vbarval { font-family: var(--font-mono); font-size: 12px; font-weight: 800; fill: #8789C0; }

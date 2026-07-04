@@ -110,16 +110,17 @@
 /* ═══ SECTIONS ═══ */
 .prof-section { padding: 24px 0; }
 
-/* ═══ AWARDS TROPHY SHELF ═══ */
-.prof-awards { display: flex; flex-wrap: wrap; gap: 8px; padding: 20px 0 8px; }
-.prof-award {
-  display: flex; align-items: center; gap: 6px; background: var(--surface); border: 1px solid var(--line);
-  border-radius: 10px; padding: 10px 14px; transition: all 0.12s;
+/* ═══ HONORS STRIP ═══ */
+.prof-honors {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px;
+  padding: 12px 16px; margin-top: 16px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
 }
-.prof-award:hover { border-color: var(--mint); transform: translateY(-1px); box-shadow: 0 2px 12px rgba(93,253,203,0.15); }
-.prof-award-icon { font-size: 1.2rem; }
-.prof-award-count { font-family: var(--font-mono); font-size: 1.15rem; font-weight: 900; color: var(--ink); }
-.prof-award-label { font-size: 0.75rem; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+.prof-honors-label { font-size: 0.68rem; font-weight: 800; color: var(--faint); text-transform: uppercase; letter-spacing: 1px; margin-right: 4px; }
+.prof-honor { font-size: 0.85rem; font-weight: 700; color: var(--ink-2); white-space: nowrap; }
+.prof-honor b { font-family: var(--font-mono); font-weight: 900; color: var(--gold); margin-right: 2px; }
+.prof-honor-sub { color: var(--muted); }
+.prof-honor-sub b { color: var(--muted); }
 .prof-section-title { font-family: var(--font-display); font-size: 1.4rem; font-weight: 800; color: var(--ink); margin-bottom: 12px; }
 .prof-section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
 .prof-section-header .prof-section-title { margin-bottom: 0; }

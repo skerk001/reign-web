@@ -1,22 +1,31 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 
 const cache = {};
 
 export function useJSON(path) {
   const [data, setData] = useState(cache[path] || null);
-  const [loading, setLoading] = useState(!cache[path]);
+  const [loading, setLoading] = useState(!!path && !cache[path]);
+  const [error, setError] = useState(null);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
-    if (!path) { setData(null); setLoading(false); return; }
-    if (cache[path]) { setData(cache[path]); setLoading(false); return; }
+    if (!path) { setData(null); setLoading(false); setError(null); return; }
+    if (cache[path]) { setData(cache[path]); setLoading(false); setError(null); return; }
+    let cancelled = false;
     setLoading(true);
+    setError(null);
     fetch(path)
-      .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
-      .then(d => { cache[path] = d; setData(d); setLoading(false); })
-      .catch(e => { console.error('Failed to load', path, e); setLoading(false); });
-  }, [path]);
+      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+      .then(d => { cache[path] = d; if (!cancelled) { setData(d); setLoading(false); } })
+      .catch(e => {
+        console.error('Failed to load', path, e);
+        if (!cancelled) { setError(e); setLoading(false); }
+      });
+    return () => { cancelled = true; };
+  }, [path, attempt]);
 
-  return { data, loading };
+  // retry() re-runs the fetch after a failure (e.g. flaky connection).
+  return { data, loading, error, retry: () => setAttempt(a => a + 1) };
 }
 
 /**
@@ -77,19 +86,29 @@ function fetchAllSeasons() {
 export function useAllSeasons(enabled = true) {
   const [data, setData] = useState(allSeasonsCache);
   const [loading, setLoading] = useState(enabled && !allSeasonsCache);
+  const [error, setError] = useState(null);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     if (!enabled) return;
     if (allSeasonsCache) { setData(allSeasonsCache); setLoading(false); return; }
+    let cancelled = false;
     setLoading(true);
-    fetchAllSeasons().then(d => { setData(d); setLoading(false); });
-  }, [enabled]);
+    setError(null);
+    fetchAllSeasons()
+      .then(d => { if (!cancelled) { setData(d); setLoading(false); } })
+      .catch(e => {
+        console.error('Failed to load season data', e);
+        allSeasonsPromise = null; // allow a retry to refetch
+        if (!cancelled) { setError(e); setLoading(false); }
+      });
+    return () => { cancelled = true; };
+  }, [enabled, attempt]);
 
-  return { data, loading };
+  return { data, loading, error, retry: () => setAttempt(a => a + 1) };
 }
 
 export function useSeasons() { return useAllSeasons(); }
 export function useStretches(type, n) {
   return useJSON(`/data/stretches_${type}${n}.json`);
 }
-export function usePlayerIndex() { return useJSON('/data/player_index.json'); }

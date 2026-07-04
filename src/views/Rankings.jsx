@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { formatReign } from '../utils/format';
 import { useJSON, useAllSeasons } from '../hooks/useData';
 import { PlayerCrest } from '../components/PlayerArt';
@@ -32,6 +32,7 @@ export default function Rankings({ onPlayerClick }) {
   const [sortDir, setSortDir] = useState('desc');
   const [count, setCount] = useState(100);
   const [dataView, setDataView] = useState('standard'); // standard | clutch
+  const [qualified, setQualified] = useState(true); // 1yr view: hide < 15 MPG seasons
   const [clutchWindow, setClutchWindow] = useState('season'); // season | career
   const [clutchSort, setClutchSort] = useState('totals'); // totals | averages
 
@@ -110,6 +111,9 @@ export default function Rankings({ onPlayerClick }) {
     if (window === '1yr') {
       if (!rankingsIndex) return [];
       let list = rankingsIndex.filter(r => r.type === seasonType);
+      // The same 15-minute qualifier the rest of the app uses (percentiles,
+      // era stats, viz). Toggle off to see every fringe season.
+      if (qualified) list = list.filter(r => (r.min || 0) >= 15);
       if (era !== 'All') list = list.filter(r => r.era === era);
       if (search.trim()) {
         const q = search.toLowerCase();
@@ -158,7 +162,7 @@ export default function Rankings({ onPlayerClick }) {
         fgp: r.avg_fgp, fg3p: r.avg_fg3p, tsp: r.avg_tsp,
       }));
     }
-  }, [rankingsIndex, fullSeasons, stretches, careerClutch, seasonType, window, era, search, stretchPath, dataView, clutchWindow]);
+  }, [rankingsIndex, fullSeasons, stretches, careerClutch, seasonType, window, era, search, dataView, clutchWindow, qualified]);
 
   const handleSort = (col) => {
     if (sortCol === col) { setSortDir(d => d === 'desc' ? 'asc' : 'desc'); }
@@ -251,6 +255,14 @@ export default function Rankings({ onPlayerClick }) {
                 onClick={() => { setClutchSort('totals'); setSortCol('clutch_tot_pts'); setSortDir('desc'); }}>Totals</button>
               <button className={`pill${clutchSort === 'averages' ? ' on' : ''}`}
                 onClick={() => { setClutchSort('averages'); setSortCol('clutch_pm'); setSortDir('desc'); }}>Averages</button>
+            </div>
+          </div>}
+          {dataView === 'standard' && window === '1yr' && <div className="ctrl-group">
+            <span className="ctrl-label">Filter</span>
+            <div className="pills">
+              <button className={`pill${qualified ? ' on' : ''}`}
+                title="Hide seasons under 15 minutes per game"
+                onClick={() => { setQualified(q => !q); setCount(100); }}>15+ MPG</button>
             </div>
           </div>}
           <div className="ctrl-group">

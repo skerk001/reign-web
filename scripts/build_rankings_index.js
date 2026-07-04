@@ -19,7 +19,7 @@ const KEEP = [
   'name', 'team', 'year', 'type', 'era',
   'reign', 'reign_off', 'reign_def',
   'pts', 'reb', 'ast', 'stl', 'blk',
-  'fgp', 'fg3p', 'tsp',
+  'fgp', 'fg3p', 'tsp', 'min',
 ];
 
 // Mid-season-traded players carry BOTH a combined ('2TM') row and per-team

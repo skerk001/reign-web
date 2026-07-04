@@ -27,16 +27,13 @@ fi
 echo "==> 3/6 update career clutch leaderboard"
 python3 scripts/build_career_clutch.py
 
-echo "==> 4/7 rebuild stretches / careers / career_avg (full)"
+echo "==> 4/6 rebuild stretches / careers / career_avg (full)"
 python3 scripts/build_derived.py --full
 
-echo "==> 5/7 rebuild player search index (player_index.json)"
-node scripts/build_player_index.js
-
-echo "==> 6/7 rebuild leaderboard index (rankings.json)"
+echo "==> 5/6 rebuild leaderboard index (rankings.json)"
 node scripts/build_rankings_index.js
 
-echo "==> 7/7 rebuild visualizations payload (viz.json)"
+echo "==> 6/6 rebuild visualizations payload (viz.json)"
 node scripts/build_viz.js
 
 echo "==> done. Changed files:"
