@@ -31,6 +31,13 @@ wrong"):
     play-by-play era, 1.0 from 2001), and dbpm by its square root (BPM
     inherits the same inputs, diluted). Extreme (padded) values compress
     hardest; average seasons barely move.
+  * TEAM-DEFENSE SHARE (v2.4): box stats can't see scheme value and
+    positioning, so DEF includes a small direct team-defense component --
+    z(-team DRtg) within season (coverage 1951+; traded/unknown team ->
+    neutral). Weight kept modest to limit free-rider credit; the
+    --calibrate-def mode shows why the term is needed: individual box
+    components alone explain far less of team defense than OFF components
+    explain of team offense.
   * ERA-STRENGTH PRIOR: within-league z-scores measure separation from
     peers, which conflates dominance with league depth -- a 6-sigma outlier
     in a 10-team, pre-integration league is cheap. An empirical chained
@@ -50,10 +57,11 @@ Model:
            + .10 z(ast) - .10 z(tov)     [obpm 1973+, ows/gp before;
                                           tov untracked pre-1978 -> z = 0]
     (weights team-attribution calibrated with guardrails -- see OFF_W)
-  * DEF  tier A/B (1973+):  .35 z(dbpm) + .25 z(dws/gp) + .15 z*(stl)
-                            + .15 z*(blk) + .10 z*(dreb)
-         tier C (1950-72):  .60 z(dws/gp) + .25 z*(reb)  + role floor
-         tier D (1946-49):  .70 z(dws/gp)                + role floor
+  * DEF  tier A/B (1973+):  .25 z(dbpm) + .20 z(dws/gp) + .15 z(teamdef)
+                            + .15 z*(stl) + .15 z*(blk) + .10 z*(dreb)
+         tier C (1950-72):  .45 z(dws/gp) + .20 z*(reb) + .20 z(teamdef)
+                            + role floor
+         tier D (1946-49):  .70 z(dws/gp)               + role floor
     (z* = role-relative; role floor = median tier-A DEF earned 1973-77 by
     same role and minutes bucket, clamped >= 0, applied as max().)
   * missing inputs contribute z = 0 (league average), never a penalty.
@@ -114,9 +122,27 @@ def reliability(year):
 # OWS substitution; ast kept at a declared 0.10 floor for playmaking
 # credit): raw pts is dropped in favor of efficiency-scaled volume.
 OFF_W = [('voleff', .45), ('oimp', .35), ('eff', .10), ('ast', .10), ('tov', -.10)]
-DEF_AB = [('dbpm', .35), ('dws_pg', .25), ('stl', .15), ('blk', .15), ('dreb', .10)]
-DEF_C = [('dws_pg', .60), ('reb', .25)]
+DEF_AB = [('dbpm', .25), ('dws_pg', .20), ('teamdef', .15),
+          ('stl', .15), ('blk', .15), ('dreb', .10)]
+DEF_C = [('dws_pg', .45), ('reb', .20), ('teamdef', .20)]
 DEF_D = [('dws_pg', .70)]
+
+# (team, start_year) -> within-season z of -DRtg; filled from --team-csv.
+TEAM_DEF_Z = {}
+
+
+def load_team_def(team_csv):
+    import csv as csvmod
+    by_season = defaultdict(dict)
+    for t in csvmod.DictReader(open(team_csv, encoding='utf-8')):
+        if (t.get('lg') in ('NBA', 'BAA') and t.get('d_rtg') not in (None, '', 'NA')
+                and t.get('abbreviation') not in (None, '', 'NA')):
+            by_season[int(t['season']) - 1][t['abbreviation']] = float(t['d_rtg'])
+    for y, teams in by_season.items():
+        vals = list(teams.values())
+        m, sd = st.mean(vals), (st.pstdev(vals) or 1.0)
+        for team, v in teams.items():
+            TEAM_DEF_Z[(team, y)] = -(v - m) / sd  # lower DRtg = better defense
 
 # constraint set for --lam auto: best LeBron season must not trail these
 CONSTRAINT_STAR = 'LeBron James'
@@ -255,16 +281,27 @@ def off_component_z(r, p, tsp_mean, role):
 
 def raw_scores(r, p, tsp_mean, role):
     f = features(r, tsp_mean)
+    # team-defense share: within-season z of -DRtg (neutral when unknown,
+    # e.g. traded '2TM' rows or pre-1951). RS and PO rows both use the
+    # team's regular-season defensive quality (a scheme prior).
+    f['teamdef'] = TEAM_DEF_Z.get((r.get('team'), r['year']))
     off = sum(w * z(f, s, p, role) for s, w in OFF_W)
     if r['year'] >= 1973:
         rel = reliability(r['year'])
         shrink = {'stl': rel, 'blk': rel, 'dbpm': math.sqrt(rel)}
-        dfn = sum(w * z(f, s, p, role) * shrink.get(s, 1.0) for s, w in DEF_AB)
+        dfn = sum(w * z_direct(f, s, p, role) * shrink.get(s, 1.0) for s, w in DEF_AB)
     elif r['year'] >= 1950:
-        dfn = sum(w * z(f, s, p, role) for s, w in DEF_C)
+        dfn = sum(w * z_direct(f, s, p, role) for s, w in DEF_C)
     else:
-        dfn = sum(w * z(f, s, p, role) for s, w in DEF_D)
+        dfn = sum(w * z_direct(f, s, p, role) for s, w in DEF_D)
     return off, dfn
+
+
+def z_direct(f, s, p, role):
+    if s == 'teamdef':  # already a within-season z; just cap
+        v = f.get('teamdef')
+        return 0.0 if v is None else max(-Z_CAP, min(Z_CAP, v))
+    return z(f, s, p, role)
 
 
 def bucket_of(m):
@@ -374,6 +411,61 @@ def calibrate_off(rows, team_csv):
     return weights
 
 
+def calibrate_def(rows, team_csv):
+    """Evidence for the team-defense component: regress within-season
+    z(-team DRtg) on minutes-weighted individual DEF box components
+    (dbpm/stl/blk/dreb -- dws EXCLUDED, it is derived from team defense and
+    would be circular). A low R2 relative to the OFF calibration shows how
+    much of team defense individual box stats cannot see."""
+    load_team_def(team_csv)
+    import re as remod
+    pool = [r for r in rows if r['type'] == 'RS' and r['year'] >= 1997]
+    roles = assign_roles([r for r in rows if r['type'] == 'RS'])
+    params, tsp_mean = build_params(rows, 'RS', roles)
+    comps = ['dbpm', 'stl', 'blk', 'dreb']
+    agg = defaultdict(lambda: defaultdict(float))
+    wsum = defaultdict(float)
+    for r in pool:
+        team = r.get('team')
+        if not team or remod.fullmatch(r'\dTM', team) or (team, r['year']) not in TEAM_DEF_Z:
+            continue
+        p = params.get(r['year'])
+        if not p:
+            continue
+        wt = (num(r.get('min')) or 0) * (num(r.get('gp')) or 0)
+        if wt <= 0:
+            continue
+        f = features(r, tsp_mean.get(r['year']))
+        for k in comps:
+            agg[(team, r['year'])][k] += wt * z(f, k, p, roles.get(id(r), 'wing'))
+        wsum[(team, r['year'])] += wt
+    X, y = [], []
+    for key, cz in agg.items():
+        if wsum[key] < 48 * 82 * 3 * 0.6:
+            continue
+        X.append([cz[k] / wsum[key] for k in comps])
+        y.append(TEAM_DEF_Z[key])
+    k = len(comps)
+    n = len(X)
+    A = [[0.0] * (k + 1) for _ in range(k + 1)]
+    bb = [0.0] * (k + 1)
+    for i in range(n):
+        xi = [1.0] + X[i]
+        for a_ in range(k + 1):
+            bb[a_] += xi[a_] * y[i]
+            for c in range(k + 1):
+                A[a_][c] += xi[a_] * xi[c]
+    for d in range(1, k + 1):
+        A[d][d] += 1e-3
+    coef = gauss_solve(A, bb)
+    yhat = [coef[0] + sum(coef[j + 1] * X[i][j] for j in range(k)) for i in range(n)]
+    ybar = st.mean(y)
+    r2 = 1 - sum((y[i] - yhat[i]) ** 2 for i in range(n)) / (sum((v - ybar) ** 2 for v in y) or 1)
+    print(f'DEF box-only calibration: {n} team-seasons, R2 = {r2:.3f} '
+          f'(vs 0.92 for OFF -- the gap is what the team-defense share covers)')
+    print('coefficients:', {k_: round(v, 3) for k_, v in zip(comps, coef[1:])})
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--markdown', default=None)
@@ -381,11 +473,21 @@ def main():
                     help="era-strength weight: 'auto' (solve the ordering constraint) or a float")
     ap.add_argument('--calibrate-off', default=None, metavar='TEAM_CSV',
                     help='run the team-attribution OFF weight calibration and exit')
+    ap.add_argument('--calibrate-def', default=None, metavar='TEAM_CSV',
+                    help='regress team DRtg on individual DEF box components and exit')
+    ap.add_argument('--team-csv', default=None, metavar='TEAM_CSV',
+                    help='Team Summaries.csv -- enables the team-defense DEF component')
     args = ap.parse_args()
 
     if args.calibrate_off:
         calibrate_off(load_rows(), args.calibrate_off)
         return
+    if args.calibrate_def:
+        calibrate_def(load_rows(), args.calibrate_def)
+        return
+    if args.team_csv:
+        load_team_def(args.team_csv)
+        print(f'team-defense component enabled ({len(TEAM_DEF_Z)} team-seasons)', file=sys.stderr)
 
     rows = load_rows()
     scored, role_of = {}, {}
@@ -487,7 +589,7 @@ def main():
     # ---------------- report ----------------
     lines = []
     w = lines.append
-    w('# REIGN 2.3 — full computation report\n')
+    w('# REIGN 2.4 — full computation report\n')
     w('Rolling 5-year windows · role-relative defense · cross-tier variance '
       'normalization · pre-2001 stl/blk scorekeeper-reliability shrinkage · '
       'team-calibrated OFF weights · z winsorized at ±4 · '
@@ -517,7 +619,7 @@ def main():
     for era, (y0, y1) in ERA_OF.items():
         w(f'\n## {era} ({y0}–{y1}) — top 10 peak seasons\n')
         er = [r for r in qual if y0 <= r['year'] <= y1]
-        w('| # | REIGN 2.3 | v2 (OFF/DEF) | v1 | | v1 top 10 | v1 |')
+        w('| # | REIGN 2.4 | v2 (OFF/DEF) | v1 | | v1 top 10 | v1 |')
         w('|---|---|---|---|---|---|---|')
         t2 = sorted(er, key=lambda r: -r['v2'])[:10]
         t1 = sorted(er, key=lambda r: -r['v1'])[:10]
@@ -529,12 +631,35 @@ def main():
                   f"{t1[i]['v1']:+.1f}") if i < len(t1) else ' | '
             w(f'| {i + 1} | {l2} | | {l1} |')
 
-    w('\n## All-time top 20 peak seasons (REIGN 2.3, regular season)\n')
+    w('\n## All-time top 20 peak seasons (REIGN 2.4, regular season)\n')
     w('| # | player | season | v2 | OFF | DEF | v1 |')
     w('|---|---|---|---|---|---|---|')
     for i, r in enumerate(sorted(qual, key=lambda r: -r['v2'])[:20], 1):
         w(f"| {i} | {r['name']} | {r['year']}-{str(r['year'] + 1)[2:]} | "
           f"**{r['v2']:+.1f}** | {r['v2_off']:+.1f} | {r['v2_def']:+.1f} | {r['v1']:+.1f} |")
+
+    # playoff boards: >= 15 MPG and >= 8 playoff games (about three series in
+    # any era; filters 4-game cameo spikes without excluding 1950s title runs)
+    po_qual = [r for r in out if r['type'] == 'PO' and r['min'] >= QUAL_MIN]
+    po_rows_by = {}
+    for r in load_rows():
+        if r['type'] == 'PO':
+            po_rows_by[(r['name'], r['year'])] = num(r.get('gp')) or 0
+    po_qual = [r for r in po_qual if po_rows_by.get((r['name'], r['year']), 0) >= 8]
+    w('\n## All-time top 15 playoff runs (REIGN 2.4, ≥8 games)\n')
+    w('*Playoff scores are standardized against the playoff field — a far '
+      'stronger population than the regular season — so +20 in the playoffs '
+      'is rarer than +20 in the regular season.*\n')
+    w('| # | player | playoffs | v2 | OFF | DEF | v1 |')
+    w('|---|---|---|---|---|---|---|')
+    for i, r in enumerate(sorted(po_qual, key=lambda r: -r['v2'])[:15], 1):
+        w(f"| {i} | {r['name']} | {r['year']}-{str(r['year'] + 1)[2:]} | "
+          f"**{r['v2']:+.1f}** | {r['v2_off']:+.1f} | {r['v2_def']:+.1f} | {r['v1']:+.1f} |")
+    w('\n**Best playoff run per era:** ' + ' · '.join(
+        f"{era}: {t['name']} '{str(t['year'] + 1)[2:]} ({t['v2']:+.1f})"
+        for era, (y0, y1) in ERA_OF.items()
+        for t in [max((r for r in po_qual if y0 <= r['year'] <= y1),
+                      key=lambda r: r['v2'], default=None)] if t) + '\n')
 
     w('\n## Biggest movers (qualified RS seasons, |v2 − v1|)\n')
     w('| direction | player | season | v1 | v2 |')
