@@ -102,10 +102,26 @@ def fetch(year, kind, source_dir=None, league='leagues'):
         return r.read().decode('utf-8', 'replace')
 
 
-def parse_table(page, field_map):
-    """Parse a bref stats table into {(name, team): {field: value}}.
-    bref wraps some tables in HTML comments, so strip those first."""
+def scope_to_first_stats_table(page):
+    """Return only the FIRST stats table on the page.
+
+    Completed-season bref pages append additional tables (e.g. the playoff
+    version of the same stats) further down, often inside HTML comments.
+    Parsing the whole page lets those later rows OVERWRITE the main table's
+    values for every playoff participant -- this is what corrupted the
+    2025-26 advanced stats twice (Jokic PER 22.8 instead of 32.3). The main
+    table always comes first, and on /playoffs/ pages the first table IS the
+    playoff table, so first-table scoping is correct for both."""
     page = page.replace('<!--', '').replace('-->', '')
+    for table in re.findall(r'<table[^>]*>.*?</table>', page, re.S):
+        if 'data-stat="name_display"' in table or 'data-stat="player"' in table:
+            return table
+    return page  # fallback: no <table> markup found; behave as before
+
+
+def parse_table(page, field_map):
+    """Parse a bref stats table into {(name, team): {field: value}}."""
+    page = scope_to_first_stats_table(page)
     rows = {}
     for tr in re.findall(r'<tr[^>]*>(.*?)</tr>', page, re.S):
         if 'data-stat="name_display"' not in tr and 'data-stat="player"' not in tr:
