@@ -219,6 +219,28 @@ def scrape_season(bref_year, season_year, league, stype, source_dir):
     return combined_rows(per_game, advanced, season_year, stype)
 
 
+def apply_name_aliases(rows, year):
+    """Same-named distinct players are stored with a career-span suffix (see
+    split_name_collisions.py). bref pages list the plain name, so freshly
+    scraped rows must be renamed the same way or an active player like
+    'Nate Williams (2025-26)' would re-merge with his historical namesake."""
+    path = os.path.join(DATA, 'name_aliases.json')
+    if not os.path.exists(path):
+        return rows
+    aliases = json.load(open(path))
+    for r in rows:
+        variants = aliases.get(r.get('name'))
+        if not variants:
+            continue
+        active = [v for v in variants if (year + 1) in v['seasons']]
+        if len(active) == 1:
+            r['name'] = active[0]['label']
+        elif len(active) > 1:
+            print(f"  WARNING: '{r['name']}' matches {len(active)} known players "
+                  f"this season -- left unrenamed, attribute manually", file=sys.stderr)
+    return rows
+
+
 def upsert(modern, fresh, year):
     """Replace all rows for `year` with `fresh`, but PRESERVE each row's clutch_*
     fields from the prior data. Clutch comes from nba.com (a separate, often-
@@ -286,7 +308,7 @@ def main():
     if not po:
         print('  no playoff rows yet (postseason not started / empty page)')
 
-    fresh = rs + po
+    fresh = apply_name_aliases(rs + po, season_year)
     formulas = reign_score.load_formulas()
     for r in fresh:
         r['reign_off'], r['reign_def'], r['reign'] = reign_score.score_row(r, 'modern', formulas)

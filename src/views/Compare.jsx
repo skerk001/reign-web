@@ -817,7 +817,7 @@ export default function Compare({ initialPlayer, initialCompare, onClearInitial,
         {/* Empty state */}
         {!hasComparison && (
           <div className="cmp-empty">
-            <div className="cmp-empty-icon">⚔️</div>
+            <div className="cmp-empty-icon" aria-hidden="true">VS</div>
             <div className="cmp-empty-title">Select two players to compare</div>
             <div className="cmp-empty-desc">Choose from the search above or pick a popular comparison to get started</div>
           </div>

@@ -122,7 +122,8 @@ def norm_name(name):
     """Join key: accent/punctuation-insensitive, trailing generational suffixes
     dropped ('Marcus Morris Sr.' == 'Marcus Morris'), non-decomposing letters
     mapped (Asik's dotless i)."""
-    s = unicodedata.normalize('NFKD', name or '')
+    name = re.sub(r'\s*\(\d{4}-\d{2}\)$', '', name or '')  # span suffix (split_name_collisions)
+    s = unicodedata.normalize('NFKD', name)
     s = ''.join(c for c in s if not unicodedata.combining(c)).lower()
     s = s.translate(str.maketrans({'ı': 'i', 'ø': 'o', 'đ': 'd', 'ł': 'l'}))
     toks = ''.join(c if c.isalnum() or c == ' ' else ' ' for c in s).split()
