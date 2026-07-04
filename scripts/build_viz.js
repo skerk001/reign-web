@@ -92,6 +92,43 @@ function scatter(type) {
     .map(r => ({ off: round(r.reign_off, 2), def: round(r.reign_def, 2), reign: round(r.reign, 2), name: r.name, year: r.year, era: r.era }));
 }
 
+function dynasties() {
+  // Dynasty Tracker: each franchise's best consecutive 5-season run, scored by
+  // the summed REIGN of its qualified players (RS, >15 MPG, positive REIGN
+  // only — a bad twelfth man shouldn't subtract from a dynasty). Top 12 runs.
+  const rs = all.filter(r => r.type === 'RS' && (r.min || 0) > 15 && r.team && !/^\dTM$/.test(r.team) && r.team !== 'TOT');
+  const teamYear = new Map(); // team -> year -> {total, players:[{name,reign}]}
+  for (const r of rs) {
+    if (!teamYear.has(r.team)) teamYear.set(r.team, new Map());
+    const yr = teamYear.get(r.team);
+    if (!yr.has(r.year)) yr.set(r.year, { total: 0, players: [] });
+    const e = yr.get(r.year);
+    e.total += Math.max(0, r.reign);
+    e.players.push({ name: r.name, reign: r.reign });
+  }
+  const best = new Map(); // team -> best window
+  for (const [team, years] of teamYear) {
+    for (const y0 of years.keys()) {
+      let total = 0, ok = true;
+      const tally = new Map();
+      for (let y = y0; y < y0 + 5; y++) {
+        const e = years.get(y);
+        if (!e) { ok = false; break; }
+        total += e.total;
+        for (const p of e.players) tally.set(p.name, (tally.get(p.name) || 0) + Math.max(0, p.reign));
+      }
+      if (!ok) continue;
+      if (!best.has(team) || total > best.get(team).total) {
+        const top = [...tally.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3)
+          .map(([name, sum]) => ({ name, reign: round(sum, 0) }));
+        best.set(team, { team, ys: y0, ye: y0 + 4, total, top });
+      }
+    }
+  }
+  return [...best.values()].sort((a, b) => b.total - a.total).slice(0, 12)
+    .map(w => ({ ...w, total: Math.round(w.total) }));
+}
+
 function clutchTop25() {
   // Top 25 by TOTAL clutch points (matches the chart, whose bar length is
   // tot_pts). tot_pm is reported as-is — a negative career clutch +/- is
@@ -108,6 +145,7 @@ const out = {
   peakAge: Object.fromEntries(['RS', 'PO'].map(t => [t, Object.fromEntries(['All', ...ERAS].map(e => [e, peakAge(t, e)]))])),
   scatter: { RS: scatter('RS'), PO: scatter('PO') },
   clutchTop25: clutchTop25(),
+  dynasties: dynasties(),
 };
 
 const dest = join(DATA_DIR, 'viz.json');

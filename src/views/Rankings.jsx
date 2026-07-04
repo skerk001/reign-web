@@ -5,7 +5,7 @@ import { PlayerCrest } from '../components/PlayerArt';
 import { reignBg, offBg, defBg, relTsBg, needsDark, clutchBg as clutchPMBg } from '../utils/heatmap';
 import HeatLegend from '../components/HeatLegend';
 import EraBadge from '../components/EraBadge';
-import Loading from '../components/Loading';
+import Loading, { LoadError } from '../components/Loading';
 import './Rankings.css';
 
 const ERA_OPTIONS = ['All', 'Pioneer', 'Legacy', 'Classic', 'Modern'];
@@ -51,12 +51,12 @@ export default function Rankings({ onPlayerClick }) {
   // single-season view — keeping the landing download ~69% smaller.
   const needFullSeasons = dataView === 'clutch' && clutchWindow === 'season';
   const needCareerClutch = dataView === 'clutch' && clutchWindow === 'career';
-  const { data: rankingsIndex, loading: loadIndex } = useJSON('/data/rankings.json');
-  const { data: fullSeasons, loading: loadFull } = useAllSeasons(needFullSeasons);
-  const { data: stretches, loading: loadStretches } = useJSON(stretchPath);
+  const { data: rankingsIndex, loading: loadIndex, error: errIndex, retry: retryIndex } = useJSON('/data/rankings.json');
+  const { data: fullSeasons, loading: loadFull, error: errFull, retry: retryFull } = useAllSeasons(needFullSeasons);
+  const { data: stretches, loading: loadStretches, error: errStretch, retry: retryStretch } = useJSON(stretchPath);
   // Fetched lazily: career_clutch.json is ~600KB and only the Clutch/Career
   // view reads it — don't pull it onto the landing leaderboard.
-  const { data: careerClutch, loading: loadCareerClutch } = useJSON(needCareerClutch ? careerClutchPath : null);
+  const { data: careerClutch, loading: loadCareerClutch, error: errClutch, retry: retryClutch } = useJSON(needCareerClutch ? careerClutchPath : null);
 
   const rows = useMemo(() => {
     // Clutch view
@@ -184,6 +184,11 @@ export default function Rankings({ onPlayerClick }) {
     || (stretchPath && loadStretches)
     || (needCareerClutch && loadCareerClutch);
 
+  const loadError = errIndex || (needFullSeasons && errFull) || (stretchPath && errStretch) || (needCareerClutch && errClutch);
+  if (loadError) {
+    return <LoadError message="Couldn't load the leaderboard data."
+      onRetry={() => { retryIndex(); retryFull(); retryStretch(); retryClutch(); }} />;
+  }
   if (loading) return <Loading message="Loading leaderboard..." />;
 
   const shown = sorted.slice(0, count);

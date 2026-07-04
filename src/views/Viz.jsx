@@ -3,6 +3,7 @@ import Loading, { LoadError } from '../components/Loading';
 import { formatReign } from '../utils/format';
 import { useJSON } from '../hooks/useData';
 import { PlayerCrest } from '../components/PlayerArt';
+import { teamPalette } from '../utils/playerArt';
 import './Viz.css';
 
 const EC = { Pioneer: '#8789C0', Legacy: '#D97706', Classic: '#2563EB', Modern: '#10B981' };
@@ -100,6 +101,7 @@ export default function Visualizations() {
           <YearlyTop3 data={viz.yearlyTop3[seasonType]} />
           <PeakAge data={viz.peakAge[seasonType][eraFilter]} />
           <ClutchTop25 data={viz.clutchTop25} />
+          {viz.dynasties && <Dynasties data={viz.dynasties} />}
         </div>
       </div>
     </div>
@@ -255,6 +257,39 @@ function PeakAge({ data }) {
           <text x={W / 2} y={H - 2} textAnchor="middle" className="vaxislbl">Age at peak</text>
         </svg>
         {hi && <Tip pos={hi}><b>Age {hi.d.age}</b><span>{hi.d.count} players peaked here</span></Tip>}
+      </div>
+    </Card>
+  );
+}
+
+/* ═══ Dynasty Tracker — best 5-season team runs ═══ */
+function Dynasties({ data }) {
+  const [hi, setHi] = useState(null);
+  const W = 1000, rowH = 30, P = { t: 8, r: 60, b: 8, l: 150 };
+  const H = P.t + P.b + data.length * rowH;
+  const max = Math.max(...data.map(d => d.total));
+  const xs = v => P.l + (v / max) * (W - P.l - P.r);
+  return (
+    <Card span="wide" title="Dynasty Tracker" desc="Each franchise's best 5-season run, scored by the summed REIGN of its qualified players. Hover for the run's pillars.">
+      <div className="vchart" onMouseLeave={() => setHi(null)}>
+        <svg viewBox={`0 0 ${W} ${H}`} className="vsvg" style={{ maxHeight: 'none' }}>
+          {data.map((d, i) => {
+            const y = P.t + i * rowH;
+            const { primary, accent } = teamPalette(d.team);
+            return (
+              <g key={d.team} onMouseEnter={e => setHi({ d, ...vbPoint(e, W, H) })}>
+                <rect x={0} y={y} width={W} height={rowH} fill={hi?.d === d ? 'rgba(255,255,255,0.04)' : 'transparent'} />
+                <text x={P.l - 8} y={y + rowH / 2 + 4} textAnchor="end" className="vname">
+                  {d.team} '{String(d.ys + 1).slice(-2)}–'{String(d.ye + 1).slice(-2)}
+                </text>
+                <rect x={P.l} y={y + 5} width={Math.max(2, xs(d.total) - P.l)} height={rowH - 10} rx={3}
+                  fill={primary} stroke={accent} strokeWidth="1" opacity={hi && hi.d !== d ? 0.45 : 0.95} />
+                <text x={xs(d.total) + 6} y={y + rowH / 2 + 4} className="vbarval">{d.total}</text>
+              </g>
+            );
+          })}
+        </svg>
+        {hi && <Tip pos={hi}><b>{hi.d.team} '{String(hi.d.ys + 1).slice(-2)}–'{String(hi.d.ye + 1).slice(-2)} — {hi.d.total} team REIGN</b>{hi.d.top.map(p => <span key={p.name}>{p.name} · +{p.reign} over the run</span>)}</Tip>}
       </div>
     </Card>
   );

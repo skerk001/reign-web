@@ -99,6 +99,15 @@ def row_teams(s):
     return s.get('_split_teams') or ([s['team']] if s.get('team') else [])
 
 
+def clean_teams(teams):
+    """Drop bref's combined markers ('2TM'/'TOT') from a display list when real
+    team codes exist (modern traded seasons have no committed splits, so the
+    marker is all we have for that season -- neighboring seasons supply the
+    real codes). Falls back to the raw list rather than going empty."""
+    real = [t for t in teams if not is_combined_team(t)]
+    return real or teams
+
+
 # --- stretches -----------------------------------------------------------
 DIVN = ['reign', 'reign_off', 'reign_def', 'pts', 'reb', 'ast', 'stl', 'blk', 'fgp', 'tsp']
 
@@ -121,7 +130,7 @@ def build_stretch(seasons, stype, N, thr=10):
             if s.get('era') and s['era'] not in eras:
                 eras.append(s['era'])
         years = sorted(s['year'] for s in top)
-        rec = {'name': name, 'teams': teams, 'eras': eras, 'years': years,
+        rec = {'name': name, 'teams': clean_teams(teams), 'eras': eras, 'years': years,
                'yr_label': ', '.join(f"'{(y + 1) % 100:02d}" for y in years)}
         for f in DIVN:
             rec['avg_' + f] = round(sum(num(s.get(f)) for s in top) / N, 4 if f == 'fgp' else 2)
@@ -150,7 +159,7 @@ def build_career_avg(seasons, stype):
             if s.get('era') and s['era'] not in eras:
                 eras.append(s['era'])
         rec = {'name': name, 'n': n,
-               'teams': teams, 'eras': eras,
+               'teams': clean_teams(teams), 'eras': eras,
                'ys': min(s['year'] for s in ss), 'ye': max(s['year'] for s in ss),
                'avg_reign': round(sum(s['reign'] for s in ss) / n, 2),
                'avg_reign_off': round(sum(num(s.get('reign_off')) for s in ss) / n, 2),
@@ -213,7 +222,7 @@ def build_careers(seasons, s3, s5, p3):
             return round(sum(num(s.get(f)) for s in rs) / len(rs), 1)
         p = prior.get(name, {})
         careers.append({
-            'name': name, 'teams': teams, 'eras': eras,
+            'name': name, 'teams': clean_teams(teams), 'eras': eras,
             'ys': min(s['year'] for s in rs), 'ye': max(s['year'] for s in rs),
             'n': len(rs), 'rp': rp, 'rpy': rpy, 'rpo': rpo, 'rpd': rpd,
             'r3': r3.get(name), 'r5': r5.get(name),

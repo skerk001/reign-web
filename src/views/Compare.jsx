@@ -127,7 +127,9 @@ function StatTable({ players, seasons, allPlayerRanks, stretches3, stretches5, s
         ? playerSeasons.filter(r => r.fg3p > 0).reduce((s, r) => s + r.fg3p, 0) / playerSeasons.filter(r => r.fg3p > 0).length
         : null;
 
-      const teams = [...new Set(allRS.map(r => r.team))].slice(0, 3).join(' · ');
+      const rawTeams = [...new Set(allRS.map(r => r.team))];
+      const realTeams = rawTeams.filter(t => t && !/^\dTM$|^TOT$/.test(t));
+      const teams = (realTeams.length ? realTeams : rawTeams).slice(0, 3).join(' · ');
       const years = allRS.length ? `${allRS[0].year}–${String(allRS[allRS.length - 1].year + 1).slice(-2)}` : '';
       const playerAwards = awards?.find(a => a.name === name) || null;
 
@@ -141,7 +143,7 @@ function StatTable({ players, seasons, allPlayerRanks, stretches3, stretches5, s
         awards: playerAwards,
       };
     });
-  }, [players, seasons, allPlayerRanks, seasonType, awards]);
+  }, [players, seasons, allPlayerRanks, seasonType, awards, useOppAdj]);
 
   const n = playerData.length;
 
@@ -344,7 +346,7 @@ function PeakBars({ players, seasons, stretches3, stretches5, seasonType, useOpp
       });
     }
     return max * 1.1 || 30;
-  }, [players, seasons, stretches3, stretches5, seasonType]);
+  }, [players, seasons, stretches3, stretches5, seasonType, useOppAdj]);
 
   const windows = [
     {
@@ -598,7 +600,7 @@ function RadarOverlay({ players, seasons, seasonType, stretches3, stretches5, us
         ],
       };
     });
-  }, [players, seasons, allFiltered, seasonType, radarWindow, stretches3, stretches5]);
+  }, [players, seasons, allFiltered, seasonType, radarWindow, stretches3, stretches5, useOppAdj]);
 
   if (playerRadars.some(r => r === null)) return null;
 

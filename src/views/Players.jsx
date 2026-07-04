@@ -85,7 +85,9 @@ export default function Players({ initialPlayer, onCompare, onPlayerChange }) {
       const rs = seasons.filter(r => r.name === name && r.type === 'RS').sort((a, b) => a.year - b.year);
       if (!rs.length) return null;
       const peak = rs.reduce((a, b) => a.reign > b.reign ? a : b);
-      const teams = [...new Set(rs.map(r => r.team))];
+      const rawTeams = [...new Set(rs.map(r => r.team))];
+      const filtered = rawTeams.filter(t => t && !/^\dTM$|^TOT$/.test(t));
+      const teams = filtered.length ? filtered : rawTeams;
       const eras = [...new Set(rs.map(r => r.era))];
       const n = rs.length;
       return {
@@ -181,7 +183,9 @@ function PlayerProfile({ name, seasons, onBack, onCompare }) {
   const peak = rs.length ? rs.reduce((a,b) => a.reign > b.reign ? a : b) : null;
   const peakPO = po.length ? po.reduce((a,b) => a.reign > b.reign ? a : b) : null;
   const avgReign = rs.length ? rs.reduce((s,r) => s + r.reign, 0) / rs.length : 0;
-  const teams = [...new Set(rs.map(r => r.team))];
+  const rawTeams = [...new Set(rs.map(r => r.team))];
+  const realTeams = rawTeams.filter(t => t && !/^\dTM$|^TOT$/.test(t));
+  const teams = realTeams.length ? realTeams : rawTeams;
   const eras = [...new Set(rs.map(r => r.era))];
   const years = rs.length ? `${rs[0].year}–${String(rs[rs.length-1].year+1).slice(-2)}` : '';
 
