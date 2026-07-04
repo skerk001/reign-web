@@ -4,10 +4,16 @@ Rebuild every derived data file from the per-era season files.
 
 The original generators for the stretch/career files were never committed
 (`regenerate_careers.py` expects a `seasons.json` that does not exist). This
-script reverse-engineers them and is validated to reproduce the committed
+script reverse-engineers them and was validated to reproduce the committed
 files byte-for-byte on unmodified data (see `--verify`). It is what makes it
 safe to regenerate after editing the season data (e.g. the pioneer defensive
 floor).
+
+NOTE: since the traded-season dedupe fix (see dedupe_seasons), a from-scratch
+build INTENTIONALLY differs from the pre-fix committed files for players with
+mid-season trades -- their careers/stretches previously double-counted the
+combined ('2TM') row plus its per-team splits. `--verify` drift for those
+players is the bug being fixed, not a regression.
 
 Outputs (compact JSON, matching the committed format):
   stretches_rs3/rs5/po3/po5.json  career_avg_rs/po.json  careers.json
@@ -29,7 +35,7 @@ reign-derived fields.
 Run:  python3 scripts/build_derived.py            # regenerate in place
       python3 scripts/build_derived.py --verify   # check exact reproduction
 """
-import json, os, sys
+import json, os, re, sys
 from collections import defaultdict
 
 DATA = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'public', 'data')
@@ -40,15 +46,57 @@ def num(v):
     return float(v) if isinstance(v, (int, float)) else 0.0
 
 
+def is_combined_team(team):
+    """bref's whole-season row for mid-season-traded players ('2TM'/'3TM'/'TOT')."""
+    return bool(team) and (bool(re.fullmatch(r'\dTM', team)) or team == 'TOT')
+
+
+def dedupe_seasons(seasons):
+    """Keep ONE row per player-season.
+
+    The historical era files carry BOTH the combined ('2TM') row and the
+    per-team split rows for mid-season-traded players (1,126 player-seasons in
+    pioneer/legacy/classic; the modern refresh already keeps only the combined
+    row). Aggregating all of them double-counts those seasons -- e.g. Wilt's
+    career REIGN total was inflated 200.9 -> 179.4 and Bob McAdoo's 122 -> 86.
+
+    Rule: within a (name, year, type) group, if a combined row exists, keep it
+    and drop the splits (their real team codes are preserved on the kept row as
+    `_split_teams` for display). Groups WITHOUT a combined row are distinct
+    same-named players (e.g. the three 1970s George Johnsons) and are left
+    untouched.
+    """
+    groups = defaultdict(list)
+    for r in seasons:
+        groups[(r['name'], r['year'], r['type'])].append(r)
+    out = []
+    for rows in groups.values():
+        combined = [r for r in rows if is_combined_team(r.get('team'))]
+        if combined and len(rows) > 1:
+            keep = dict(max(combined, key=lambda r: num(r.get('gp'))))
+            keep['_split_teams'] = [r['team'] for r in rows
+                                    if r.get('team') and not is_combined_team(r['team'])]
+            out.append(keep)
+        else:
+            out.extend(rows)
+    return out
+
+
 def load_seasons():
     out = []
     for e in ERAS:
         out += json.load(open(os.path.join(DATA, f'seasons_{e}.json')))
-    return out
+    return dedupe_seasons(out)
 
 
 def dump(obj):
     return json.dumps(obj, separators=(',', ':'))
+
+
+def row_teams(s):
+    """Display team codes for a season row: the real split teams for a traded
+    season (stashed by dedupe_seasons), else the row's own team."""
+    return s.get('_split_teams') or ([s['team']] if s.get('team') else [])
 
 
 # --- stretches -----------------------------------------------------------
@@ -67,8 +115,9 @@ def build_stretch(seasons, stype, N, thr=10):
         top = sorted(ss, key=lambda s: (-s['reign'], s['year']))[:N]
         teams, eras = [], []
         for s in top:
-            if s.get('team') and s['team'] not in teams:
-                teams.append(s['team'])
+            for t in row_teams(s):
+                if t not in teams:
+                    teams.append(t)
             if s.get('era') and s['era'] not in eras:
                 eras.append(s['era'])
         years = sorted(s['year'] for s in top)
@@ -93,11 +142,33 @@ def build_career_avg(seasons, stype):
     out = []
     for name, ss in byp.items():
         n = len(ss)
-        out.append({'name': name, 'n': n,
-                    'avg_reign': round(sum(s['reign'] for s in ss) / n, 2),
-                    'avg_reign_off': round(sum(num(s.get('reign_off')) for s in ss) / n, 2),
-                    'avg_reign_def': round(sum(num(s.get('reign_def')) for s in ss) / n, 2),
-                    'avg_pts': round(sum(num(s.get('pts')) for s in ss) / n, 2)})
+        teams, eras = [], []
+        for s in sorted(ss, key=lambda s: s['year']):
+            for t in row_teams(s):
+                if t not in teams:
+                    teams.append(t)
+            if s.get('era') and s['era'] not in eras:
+                eras.append(s['era'])
+        rec = {'name': name, 'n': n,
+               'teams': teams, 'eras': eras,
+               'ys': min(s['year'] for s in ss), 'ye': max(s['year'] for s in ss),
+               'avg_reign': round(sum(s['reign'] for s in ss) / n, 2),
+               'avg_reign_off': round(sum(num(s.get('reign_off')) for s in ss) / n, 2),
+               'avg_reign_def': round(sum(num(s.get('reign_def')) for s in ss) / n, 2),
+               'avg_pts': round(sum(num(s.get('pts')) for s in ss) / n, 2)}
+        # Box-stat averages the Career leaderboard displays (the stretch files
+        # already carry these; without them the RPG..TS% columns render as em
+        # dashes). Percentages keep 4 decimals since they're 0-1 fractions.
+        for f in ('reb', 'ast', 'stl', 'blk'):
+            rec['avg_' + f] = round(sum(num(s.get(f)) for s in ss) / n, 2)
+        for f in ('fgp', 'tsp'):
+            rec['avg_' + f] = round(sum(num(s.get(f)) for s in ss) / n, 4)
+        # fg3p: average only seasons that attempted threes (same convention as
+        # the stretch files) -- null otherwise, so pre-3PT players show '—'.
+        v3 = [num(s.get('fg3p')) for s in ss
+              if isinstance(s.get('fg3p'), (int, float)) and s.get('fg3p') != 0]
+        rec['avg_fg3p'] = round(sum(v3) / len(v3), 4) if v3 else None
+        out.append(rec)
     out.sort(key=lambda r: -r['avg_reign'])
     return out
 
@@ -132,8 +203,9 @@ def build_careers(seasons, s3, s5, p3):
         pp, ppy, ppo, ppd = peak(po)
         teams, eras = [], []
         for s in sorted(rs, key=lambda s: s['year']):
-            if s.get('team') and s['team'] not in teams:
-                teams.append(s['team'])
+            for t in row_teams(s):
+                if t not in teams:
+                    teams.append(t)
             if s.get('era') and s['era'] not in eras:
                 eras.append(s['era'])
 

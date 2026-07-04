@@ -76,6 +76,15 @@ export function clutchPctBg(pct) {
 }
 
 // Cells bright enough to need dark text; everything else (incl. transparent) gets light text.
-const DARK_TEXT = new Set(['#5DFDCB', '#33e3ad', '#22cf9c', '#F5B942', '#e0962a', '#7CC6FE', '#3f8fd4']);
+// Membership is contrast-driven (WCAG AA, 4.5:1): every color here fails with white
+// text but passes with near-black. Includes the pale one-off swatches used by the
+// clutch Tot PTS/+- columns in Rankings (#a7f3d0/#fee2e2/#10B981), which were
+// nearly unreadable with white text (1.2-2.5:1).
+const DARK_TEXT = new Set([
+  '#5DFDCB', '#33e3ad', '#15b487', '#22cf9c', '#129472',
+  '#F5B942', '#e0962a', '#b06d14',
+  '#7CC6FE', '#3f8fd4',
+  '#10B981', '#a7f3d0', '#fee2e2',
+]);
 export function needsDark(bg) { return DARK_TEXT.has(bg); }
 export function textColor(bg) { return DARK_TEXT.has(bg) ? '#08090A' : '#e8eaf2'; }

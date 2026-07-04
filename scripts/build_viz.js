@@ -15,8 +15,29 @@ const DATA_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'public', '
 const ERAS = ['Pioneer', 'Legacy', 'Classic', 'Modern'];
 const ERA_YEARS = { Pioneer: [1946, 1962], Legacy: [1963, 1995], Classic: [1996, 2012], Modern: [2013, 2026] };
 
-const all = ['pioneer', 'legacy', 'classic', 'modern']
-  .flatMap(e => JSON.parse(readFileSync(join(DATA_DIR, `seasons_${e}.json`), 'utf8')));
+// One row per player-season: traded seasons carry a combined ('2TM') row plus
+// per-team splits — keep only the combined row so yearly top-3, timelines and
+// scatter don't count the same season twice. Groups without a combined row are
+// distinct same-named players — kept as-is. (Mirrors scripts/build_derived.py.)
+function dedupeSeasons(rows) {
+  const isCombined = r => /^\dTM$/.test(r.team || '') || r.team === 'TOT';
+  const groups = new Map();
+  for (const r of rows) {
+    const k = `${r.name}|${r.year}|${r.type}`;
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(r);
+  }
+  const out = [];
+  for (const g of groups.values()) {
+    const combined = g.filter(isCombined);
+    if (combined.length && g.length > 1) out.push(combined.reduce((a, b) => ((b.gp || 0) > (a.gp || 0) ? b : a)));
+    else out.push(...g);
+  }
+  return out;
+}
+
+const all = dedupeSeasons(['pioneer', 'legacy', 'classic', 'modern']
+  .flatMap(e => JSON.parse(readFileSync(join(DATA_DIR, `seasons_${e}.json`), 'utf8'))));
 
 const round = (v, d = 1) => Math.round(v * 10 ** d) / 10 ** d;
 const pct = v => (v <= 1 ? v * 100 : v);
@@ -72,9 +93,12 @@ function scatter(type) {
 }
 
 function clutchTop25() {
+  // Top 25 by TOTAL clutch points (matches the chart, whose bar length is
+  // tot_pts). tot_pm is reported as-is — a negative career clutch +/- is
+  // real information, not something to clamp to 0.
   const cc = JSON.parse(readFileSync(join(DATA_DIR, 'career_clutch.json'), 'utf8'));
-  return cc.filter(r => r.rs_gp >= 50).sort((a, b) => b.rs_avg_pts - a.rs_avg_pts).slice(0, 25)
-    .map(r => ({ name: r.name, avg_ppg: round(r.rs_avg_pts), tot_pts: Math.round(r.rs_tot_pts), tot_pm: Math.max(Math.round(r.rs_tot_pm), 0), gp: r.rs_gp }));
+  return cc.filter(r => r.rs_gp >= 50).sort((a, b) => b.rs_tot_pts - a.rs_tot_pts).slice(0, 25)
+    .map(r => ({ name: r.name, avg_ppg: round(r.rs_avg_pts), tot_pts: Math.round(r.rs_tot_pts), tot_pm: Math.round(r.rs_tot_pm), gp: r.rs_gp }));
 }
 
 const out = {

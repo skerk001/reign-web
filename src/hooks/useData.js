@@ -33,6 +33,29 @@ const ERA_FILES = [
 let allSeasonsCache = null;
 let allSeasonsPromise = null;
 
+// One row per player-season: mid-season-traded players carry BOTH a combined
+// ('2TM'/'3TM') row and per-team split rows in the historical era files, which
+// double-counts those seasons in career averages, trajectories, and season
+// logs. Keep only the combined row. Groups without a combined row are distinct
+// same-named players (e.g. the 1970s George Johnsons) — kept as-is.
+// (Mirrors dedupe_seasons in scripts/build_derived.py.)
+function dedupeSeasons(rows) {
+  const isCombined = r => /^\dTM$/.test(r.team || '') || r.team === 'TOT';
+  const groups = new Map();
+  for (const r of rows) {
+    const k = `${r.name}|${r.year}|${r.type}`;
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(r);
+  }
+  const out = [];
+  for (const g of groups.values()) {
+    const combined = g.filter(isCombined);
+    if (combined.length && g.length > 1) out.push(combined.reduce((a, b) => ((b.gp || 0) > (a.gp || 0) ? b : a)));
+    else out.push(...g);
+  }
+  return out;
+}
+
 function fetchAllSeasons() {
   if (allSeasonsCache) return Promise.resolve(allSeasonsCache);
   if (allSeasonsPromise) return allSeasonsPromise;
@@ -40,7 +63,7 @@ function fetchAllSeasons() {
     if (cache[f]) return Promise.resolve(cache[f]);
     return fetch(f).then(r => r.json()).then(d => { cache[f] = d; return d; });
   })).then(arrays => {
-    const merged = arrays.flat();
+    const merged = dedupeSeasons(arrays.flat());
     allSeasonsCache = merged;
     cache['/data/seasons.json'] = merged; // Also populate legacy cache key
     return merged;

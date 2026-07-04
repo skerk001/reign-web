@@ -22,14 +22,37 @@ const KEEP = [
   'fgp', 'fg3p', 'tsp',
 ];
 
-const out = [];
-for (const era of ERAS) {
-  const records = JSON.parse(readFileSync(join(DATA_DIR, `seasons_${era}.json`), 'utf8'));
-  for (const r of records) {
-    const slim = {};
-    for (const k of KEEP) if (r[k] !== undefined) slim[k] = r[k];
-    out.push(slim);
+// Mid-season-traded players carry BOTH a combined ('2TM') row and per-team
+// split rows in the historical era files. The leaderboard must list one entry
+// per player-season, so keep only the combined row when one exists. Groups
+// without a combined row are distinct same-named players — kept as-is.
+// (Mirrors dedupe_seasons in scripts/build_derived.py and useData.js.)
+function dedupeSeasons(rows) {
+  const isCombined = r => /^\dTM$/.test(r.team || '') || r.team === 'TOT';
+  const groups = new Map();
+  for (const r of rows) {
+    const k = `${r.name}|${r.year}|${r.type}`;
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(r);
   }
+  const out = [];
+  for (const g of groups.values()) {
+    const combined = g.filter(isCombined);
+    if (combined.length && g.length > 1) out.push(combined.reduce((a, b) => ((b.gp || 0) > (a.gp || 0) ? b : a)));
+    else out.push(...g);
+  }
+  return out;
+}
+
+const all = [];
+for (const era of ERAS) {
+  all.push(...JSON.parse(readFileSync(join(DATA_DIR, `seasons_${era}.json`), 'utf8')));
+}
+const out = [];
+for (const r of dedupeSeasons(all)) {
+  const slim = {};
+  for (const k of KEEP) if (r[k] !== undefined) slim[k] = r[k];
+  out.push(slim);
 }
 
 const dest = join(DATA_DIR, 'rankings.json');

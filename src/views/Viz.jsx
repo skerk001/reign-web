@@ -154,7 +154,11 @@ function OffDefScatter({ data, eraFilter }) {
   const [hi, setHi] = useState(null);
   const pts = useMemo(() => eraFilter === 'All' ? data : data.filter(d => d.era === eraFilter), [data, eraFilter]);
   const W = 1000, H = 460, P = { t: 20, r: 24, b: 40, l: 46 };
-  const xMax = 22, yMin = -2, yMax = 12;
+  // Domain grows to fit the data (playoff DEF reaches +20, OFF +23) so no
+  // point ever lands outside the plot; the floors keep the RS view stable.
+  const xMax = Math.max(22, ...data.map(d => d.off + 0.5));
+  const yMin = Math.min(-2, ...data.map(d => d.def - 0.5));
+  const yMax = Math.max(12, ...data.map(d => d.def + 0.5));
   const xs = v => P.l + (v / xMax) * (W - P.l - P.r);
   const ys = v => P.t + (1 - (v - yMin) / (yMax - yMin)) * (H - P.t - P.b);
   return (
@@ -173,7 +177,7 @@ function OffDefScatter({ data, eraFilter }) {
           <text x={xs(17)} y={ys(0.5)} className="vquad">OFFENSIVE STAR</text>
           <text x={xs(2)} y={ys(9)} className="vquad">DEFENSIVE ANCHOR</text>
         </svg>
-        {hi && <Tip pos={hi}><b>{hi.d.name} '{String(hi.d.year + 1).slice(-2)}</b><span>OFF +{hi.d.off} · DEF +{hi.d.def}</span><span style={{ color: MINT }}>REIGN +{hi.d.reign}</span></Tip>}
+        {hi && <Tip pos={hi}><b>{hi.d.name} '{String(hi.d.year + 1).slice(-2)}</b><span>OFF {formatReign(hi.d.off)} · DEF {formatReign(hi.d.def)}</span><span style={{ color: MINT }}>REIGN {formatReign(hi.d.reign)}</span></Tip>}
       </div>
     </Card>
   );
@@ -248,7 +252,7 @@ function ClutchTop25({ data }) {
   const max = Math.max(...data.map(d => d.tot_pts));
   const xs = v => P.l + (v / max) * (W - P.l - P.r);
   return (
-    <Card span="half" title="Clutch Careers — Top 25" desc="Most total clutch points (last 5 min, ≤5 pt game). Bar = total points, sorted by clutch PPG.">
+    <Card span="half" title="Clutch Careers — Top 25" desc="Most total clutch points (last 5 min, ≤5 pt game). Bar = total points · number = clutch PPG.">
       <div className="vchart" onMouseLeave={() => setHi(null)}>
         <svg viewBox={`0 0 ${W} ${H}`} className="vsvg" style={{ maxHeight: 'none' }}>
           {data.map((d, i) => {
@@ -263,7 +267,7 @@ function ClutchTop25({ data }) {
             );
           })}
         </svg>
-        {hi && <Tip pos={hi}><b>{hi.d.name}</b><span style={{ color: GOLD }}>{hi.d.tot_pts} total clutch pts</span><span>{hi.d.avg_ppg} PPG · +{hi.d.tot_pm} +/− · {hi.d.gp} GP</span></Tip>}
+        {hi && <Tip pos={hi}><b>{hi.d.name}</b><span style={{ color: GOLD }}>{hi.d.tot_pts} total clutch pts</span><span>{hi.d.avg_ppg} PPG · {hi.d.tot_pm >= 0 ? '+' : ''}{hi.d.tot_pm} +/− · {hi.d.gp} GP</span></Tip>}
       </div>
     </Card>
   );

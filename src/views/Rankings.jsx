@@ -23,7 +23,7 @@ function HeatTd({ v, bgFn, children, cls }) {
   return <td className={cls || ''} style={{background: bg, color}}>{children}</td>;
 }
 
-export default function Rankings() {
+export default function Rankings({ onPlayerClick }) {
   const [seasonType, setSeasonType] = useState('RS');
   const [window, setWindow] = useState('1yr');
   const [era, setEra] = useState('All');
@@ -49,10 +49,13 @@ export default function Rankings() {
   // files (with clutch_*/advanced fields) are fetched only for the Clutch
   // single-season view — keeping the landing download ~69% smaller.
   const needFullSeasons = dataView === 'clutch' && clutchWindow === 'season';
+  const needCareerClutch = dataView === 'clutch' && clutchWindow === 'career';
   const { data: rankingsIndex, loading: loadIndex } = useJSON('/data/rankings.json');
   const { data: fullSeasons, loading: loadFull } = useAllSeasons(needFullSeasons);
   const { data: stretches, loading: loadStretches } = useJSON(stretchPath);
-  const { data: careerClutch, loading: loadCareerClutch } = useJSON(careerClutchPath);
+  // Fetched lazily: career_clutch.json is ~600KB and only the Clutch/Career
+  // view reads it — don't pull it onto the landing leaderboard.
+  const { data: careerClutch, loading: loadCareerClutch } = useJSON(needCareerClutch ? careerClutchPath : null);
 
   const rows = useMemo(() => {
     // Clutch view
@@ -131,7 +134,8 @@ export default function Rankings() {
       }
       return list.map(r => ({
         name: r.name, teams: r.teams, eras: r.eras,
-        yr_label: r.yr_label, era: r.eras?.[0] || 'Unknown',
+        yr_label: r.ys != null ? `${r.ys}-${String(r.ye + 1).slice(-2)}` : r.yr_label,
+        era: r.eras?.[0] || 'Unknown',
         n: r.n,
         reign: r.avg_reign, off: r.avg_reign_off, def: r.avg_reign_def,
         pts: r.avg_pts, reb: r.avg_reb, ast: r.avg_ast, stl: r.avg_stl, blk: r.avg_blk,
@@ -174,11 +178,24 @@ export default function Rankings() {
   const loading = (dataView === 'standard' && window === '1yr' && loadIndex)
     || (needFullSeasons && loadFull)
     || (stretchPath && loadStretches)
-    || (dataView === 'clutch' && clutchWindow === 'career' && loadCareerClutch);
+    || (needCareerClutch && loadCareerClutch);
+
+  if (loading) return <Loading message="Loading leaderboard..." />;
 
   const shown = sorted.slice(0, count);
   const windowLabel = window === '1yr' ? 'Single Season' : window === '3yr' ? '3-Year Stretch' : window === '5yr' ? '5-Year Stretch' : 'Career Average';
   const typeLabel = seasonType === 'RS' ? 'Regular Season' : 'Playoffs';
+  // Names link to the player profile when the parent wires up navigation.
+  const nameCell = (r) => (
+    <td className="t-name">
+      <span className="t-name-row" onClick={onPlayerClick ? () => onPlayerClick(r.name) : undefined}
+        style={onPlayerClick ? { cursor: 'pointer' } : undefined}
+        title={onPlayerClick ? `View ${r.name}'s profile` : undefined}>
+        <PlayerCrest name={r.name} team={r.team || (r.teams || [])[0]} size={28} compact className="t-crest" />
+        <span className="t-name-txt"><strong className="pn">{r.name}</strong><span className="pt">{r.team || (r.teams || []).slice(0, 3).join(' · ')}</span></span>
+      </span>
+    </td>
+  );
 
   return (
     <div className="rk">
@@ -254,7 +271,7 @@ export default function Rankings() {
 
         {dataView === 'standard' && <HeatLegend />}
 
-        {dataView === 'standard' && shown.length >= 3 && (
+        {dataView === 'standard' && sortDir === 'desc' && shown.length >= 3 && (
           <div className="rk-podium">
             {shown.slice(0, 3).map((r, i) => (
               <div className={`pod pod-${i + 1}`} key={`${r.name}-${r.yr_label}-pod`}>
@@ -307,22 +324,17 @@ export default function Rankings() {
                           : rank <= 10 ? <span className="badge">{rank}</span>
                           : <span className="rknum">{rank}</span>}
                       </td>
-                      <td className="t-name">
-                        <span className="t-name-row">
-                          <PlayerCrest name={r.name} team={r.team || (r.teams || [])[0]} size={28} compact className="t-crest" />
-                          <span className="t-name-txt"><strong className="pn">{r.name}</strong><span className="pt">{r.team}</span></span>
-                        </span>
-                      </td>
+                      {nameCell(r)}
                       <td className="t-yrs"><span className="yr-range">{r.yr_label}</span></td>
                       <td className="t-era">{(r.eras || [r.era]).map(e => <EraBadge key={e} era={e} size={20} />)}</td>
                       <td className="t-n t-reign-cell" style={{background: totPtsBg, color: needsDark(totPtsBg)?'#08090A':'#fff'}}>{r.clutch_tot_pts != null ? r.clutch_tot_pts.toFixed(0) : '—'}</td>
                       <td className="t-n" style={{background: totPmBg, color: needsDark(totPmBg)?'#08090A':'#fff'}}>{r.clutch_tot_pm != null ? (r.clutch_tot_pm >= 0 ? '+' : '') + r.clutch_tot_pm.toFixed(0) : '—'}</td>
                       <td className="t-n t-stat-v">{fmtStat(r.clutch_pts)}</td>
                       <HeatTd v={r.clutch_pm} bgFn={clutchPMBg} cls="t-n">{r.clutch_pm != null ? (r.clutch_pm >= 0 ? '+' : '') + r.clutch_pm.toFixed(1) : '—'}</HeatTd>
-                      <td className="t-n t-stat-v">{r.clutch_wpct ? (r.clutch_wpct * 100).toFixed(0) + '%' : '—'}</td>
+                      <td className="t-n t-stat-v">{r.clutch_wpct != null ? (r.clutch_wpct * 100).toFixed(0) + '%' : '—'}</td>
                       {clutchWindow === 'season' && <HeatTd v={r.clutch_ts_vs_lg} bgFn={relTsBg} cls="t-n">{r.clutch_ts_vs_lg != null ? (r.clutch_ts_vs_lg >= 0 ? '+' : '') + r.clutch_ts_vs_lg.toFixed(0) : '—'}</HeatTd>}
-                      {clutchWindow === 'season' && <td className="t-n t-pct">{r.clutch_ts ? (r.clutch_ts * 100).toFixed(0) + '%' : '—'}</td>}
-                      {clutchWindow === 'season' && <td className="t-n t-pct" style={{color:'#b0b4d0'}}>{r.clutch_lg_ts ? r.clutch_lg_ts.toFixed(0) + '%' : '—'}</td>}
+                      {clutchWindow === 'season' && <td className="t-n t-pct">{r.clutch_ts != null ? (r.clutch_ts * 100).toFixed(0) + '%' : '—'}</td>}
+                      {clutchWindow === 'season' && <td className="t-n t-pct" style={{color:'#b0b4d0'}}>{r.clutch_lg_ts != null ? r.clutch_lg_ts.toFixed(0) + '%' : '—'}</td>}
                       <td className="t-n t-stat-v">{r.clutch_gp ?? '—'}</td>
                       {clutchWindow === 'career' && <td className="t-n t-stat-v">{r.seasons ?? '—'}</td>}
                     </tr>
@@ -361,6 +373,10 @@ export default function Rankings() {
                 {shown.map((r, i) => {
                   const rank = i + 1;
                   const cls = rank <= 10 ? ' elite' : rank <= 25 ? ' star' : '';
+                  // STL/BLK weren't recorded until 1973-74; those single-season
+                  // rows carry literal 0s, which read as "0.0 steals" — show a
+                  // dash instead so untracked isn't confused with none.
+                  const preTracking = r.year != null && r.year < 1973;
                   return (
                     <tr key={`${r.name}-${r.yr_label}-${i}`} className={`row${cls}`}>
                       <td className="t-rk">
@@ -370,12 +386,7 @@ export default function Rankings() {
                           ? <span className="badge">{rank}</span>
                           : <span className="rknum">{rank}</span>}
                       </td>
-                      <td className="t-name">
-                        <span className="t-name-row">
-                          <PlayerCrest name={r.name} team={r.team || (r.teams || [])[0]} size={28} compact className="t-crest" />
-                          <span className="t-name-txt"><strong className="pn">{r.name}</strong><span className="pt">{r.team || (r.teams || []).slice(0,3).join(' · ')}</span></span>
-                        </span>
-                      </td>
+                      {nameCell(r)}
                       <td className="t-yrs"><span className="yr-range">{r.yr_label}</span></td>
                       <td className="t-era">
                         {(r.eras || [r.era]).map(e => (
@@ -386,12 +397,12 @@ export default function Rankings() {
                       <HeatTd v={r.off} bgFn={offBg} cls="t-n t-off">{formatReign(r.off)}</HeatTd>
                       <HeatTd v={r.def} bgFn={defBg} cls="t-n t-def">{formatReign(r.def)}</HeatTd>
                       <td className="t-n t-stat-v">{fmtStat(r.pts)}</td>
-                      <td className="t-n t-stat-v">{fmtStat(r.reb)}</td>
+                      <td className="t-n t-stat-v" title={r.year != null && r.year < 1950 ? 'Rebounds not tracked until 1950-51' : undefined}>{r.year != null && r.year < 1950 ? '—' : fmtStat(r.reb)}</td>
                       <td className="t-n t-stat-v">{fmtStat(r.ast)}</td>
-                      <td className="t-n t-stat-v">{fmtStat(r.stl)}</td>
-                      <td className="t-n t-stat-v">{fmtStat(r.blk)}</td>
+                      <td className="t-n t-stat-v" title={preTracking ? 'Steals not tracked until 1973-74' : undefined}>{preTracking ? '—' : fmtStat(r.stl)}</td>
+                      <td className="t-n t-stat-v" title={preTracking ? 'Blocks not tracked until 1973-74' : undefined}>{preTracking ? '—' : fmtStat(r.blk)}</td>
                       <td className="t-n t-pct">{fmtPct(r.fgp)}</td>
-                      <td className="t-n t-pct">{fmtPct(r.fg3p)}</td>
+                      <td className="t-n t-pct" title={r.year != null && r.year < 1979 ? 'No 3-point line until 1979-80' : undefined}>{r.year != null && r.year < 1979 ? '—' : fmtPct(r.fg3p)}</td>
                       <td className="t-n t-pct">{fmtPct(r.tsp)}</td>
                     </tr>
                   );

@@ -143,9 +143,9 @@ export default function Methodology() {
             <a className="mth-paper-btn" href="/REIGN_Methodology_Paper.pdf" target="_blank" rel="noopener noreferrer">Read the paper →</a>
           </div>
           <div className="mth-stats">
-            <span><b>29,969</b> player-seasons</span>
-            <span><b>3,484</b> players</span>
-            <span><b>1946–2025</b></span>
+            <span><b>29,200</b> player-seasons</span>
+            <span><b>3,609</b> players</span>
+            <span><b>1946–2026</b></span>
             <span><b>4</b> era models</span>
           </div>
         </section>
