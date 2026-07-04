@@ -184,6 +184,22 @@ def scrape_season(bref_year, season_year, league, stype, source_dir):
     advanced = parse_table(adv_html, ADVANCED_MAP)
     if not per_game:
         return []
+    # Guard against the RS/PO file mix-up that corrupted the 2025-26 season:
+    # both season types share the filename NBA_<year>_advanced.html, and a
+    # playoffs file in the regular-season slot silently joins playoff advanced
+    # values onto RS rows (and leaves non-playoff players' advanced null).
+    # The tables are cleanly distinguishable by size: a full-league table has
+    # 450+ player rows, a playoff table at most ~250.
+    for label, table in (('per_game', per_game), ('advanced', advanced)):
+        if stype == 'RS' and table and len(table) < 300:
+            raise ValueError(
+                f'{label} table for the regular season has only {len(table)} rows '
+                f'-- this looks like a PLAYOFFS file in the regular-season slot '
+                f'(both are named NBA_{bref_year}_{label}.html)')
+        if stype == 'PO' and table and len(table) > 320:
+            raise ValueError(
+                f'{label} table for the playoffs has {len(table)} rows '
+                f'-- this looks like a REGULAR-SEASON file in the playoffs slot')
     return combined_rows(per_game, advanced, season_year, stype)
 
 
