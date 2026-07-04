@@ -79,10 +79,21 @@ def fetch_html(year, source_dir=None, league='leagues'):
         return r.read().decode('utf-8', 'replace')
 
 
-def parse_advanced(page):
-    """Parse the advanced table into {(player, team): {field: value}}.
-    bref sometimes wraps tables in HTML comments; strip those first."""
+def scope_to_first_stats_table(page):
+    """Only the FIRST stats table: completed-season pages append playoff
+    variants of the same table further down (often in HTML comments), and
+    whole-page parsing lets those rows overwrite the main table's values.
+    (Same fix as refresh_current_season.py.)"""
     page = page.replace('<!--', '').replace('-->', '')
+    for table in re.findall(r'<table[^>]*>.*?</table>', page, re.S):
+        if 'data-stat="name_display"' in table or 'data-stat="player"' in table:
+            return table
+    return page
+
+
+def parse_advanced(page):
+    """Parse the advanced table into {(player, team): {field: value}}."""
+    page = scope_to_first_stats_table(page)
     out = {}
     for row in re.findall(r'<tr[^>]*>(.*?)</tr>', page, re.S):
         if 'data-stat="name_display"' not in row and 'data-stat="player"' not in row:
@@ -222,7 +233,10 @@ def main():
         return
 
     filled = 0
+    interrupted = False
     for year in years:
+        if interrupted:
+            break
         # rows store the season START year; bref pages are named by END year
         # (NBA_2014_advanced == the 2013-14 season).
         bref_year = year + 1
@@ -233,15 +247,26 @@ def main():
                 continue
             try:
                 table = parse_advanced(fetch_html(bref_year, source_dir, league))
+            except KeyboardInterrupt:
+                # a mid-run interrupt used to lose EVERY fill (the file is
+                # written only at the end) -- save progress instead
+                print('  interrupted -- saving the rows filled so far')
+                interrupted = True
+                break
             except Exception as e:  # noqa: BLE001
                 print(f'  {year} {stype}: FETCH FAILED ({e}). '
                       f'If 403, run where basketball-reference is reachable, or use '
                       f'--source-dir with pre-downloaded NBA_{bref_year}_advanced.html.')
                 continue
+            # exact (name, team) first; then accent/suffix-normalized name --
+            # historical rows sometimes differ from bref in accents or
+            # generational suffixes ('Nene', 'Ron Holland II').
+            by_norm = {}
+            for (nm, _t), v in table.items():
+                by_norm.setdefault(norm_name(nm), v)
             n = 0
             for r in batch:
-                rec = table.get((r['name'], r.get('team'))) or next(
-                    (v for (nm, _), v in table.items() if nm == r['name']), None)
+                rec = table.get((r['name'], r.get('team'))) or by_norm.get(norm_name(r['name']))
                 if rec:
                     for f in NEEDED:
                         if f in rec:
