@@ -483,177 +483,177 @@
   "modern": {
     "reign_off": {
       "n": 7337,
-      "r2": 0.8167,
-      "mae": 0.9776,
+      "r2": 0.8397,
+      "mae": 0.8848,
       "intercept": 1.5988,
       "terms": [
         {
           "feature": "ows",
-          "weight": 0.62,
-          "mean": 1.1307,
-          "std": 1.773
+          "weight": 0.7214,
+          "mean": 1.1999,
+          "std": 1.7506
         },
         {
           "feature": "obpm",
-          "weight": -0.9173,
-          "mean": -0.4692,
-          "std": 2.4358
+          "weight": -1.0842,
+          "mean": -0.4925,
+          "std": 2.9096
         },
         {
           "feature": "vorp",
-          "weight": -0.0456,
-          "mean": 0.5321,
-          "std": 1.1751
+          "weight": -0.1536,
+          "mean": 0.5851,
+          "std": 1.1708
         },
         {
           "feature": "per",
-          "weight": -1.176,
-          "mean": 10.4934,
-          "std": 7.4376
+          "weight": -0.7554,
+          "mean": 13.6906,
+          "std": 5.5021
         },
         {
           "feature": "ws48",
-          "weight": 0.6809,
-          "mean": 0.0683,
-          "std": 0.0697
+          "weight": 0.4884,
+          "mean": 0.0869,
+          "std": 0.0723
         },
         {
           "feature": "pts",
-          "weight": 5.9715,
+          "weight": 4.2427,
           "mean": 10.3995,
           "std": 6.4654
         },
         {
           "feature": "ast",
-          "weight": 0.8672,
+          "weight": 0.5672,
           "mean": 2.2882,
           "std": 1.9219
         },
         {
           "feature": "tsp",
-          "weight": -0.5093,
+          "weight": -0.3529,
           "mean": 0.5514,
           "std": 0.0847
         },
         {
           "feature": "ftm",
-          "weight": -1.1355,
+          "weight": -0.9016,
           "mean": 1.7023,
           "std": 1.5547
         },
         {
           "feature": "fga",
-          "weight": -5.9046,
+          "weight": -4.2253,
           "mean": 8.3409,
           "std": 4.8592
         },
         {
           "feature": "min",
-          "weight": 0.872,
+          "weight": 1.448,
           "mean": 23.3298,
           "std": 8.6284
         },
         {
           "feature": "gp",
-          "weight": 0.3689,
+          "weight": 0.0656,
           "mean": 44.2515,
           "std": 27.3051
         },
         {
           "feature": "pts*tsp",
-          "weight": 2.5776,
+          "weight": 1.3944,
           "mean": 5.865,
           "std": 3.8677
         },
         {
           "feature": "min*ws48",
-          "weight": -0.1663,
-          "mean": 1.6611,
-          "std": 1.8308
+          "weight": 0.0726,
+          "mean": 2.1805,
+          "std": 1.9966
         },
         {
           "feature": "min*obpm",
-          "weight": 1.2528,
-          "mean": -1.6471,
-          "std": 54.2784
+          "weight": 2.3544,
+          "mean": 1.5922,
+          "std": 69.5717
         }
       ]
     },
     "reign_def": {
       "n": 7337,
-      "r2": 0.5282,
-      "mae": 0.7884,
+      "r2": 0.5135,
+      "mae": 0.827,
       "intercept": 0.7309,
       "terms": [
         {
           "feature": "dws",
-          "weight": 0.0114,
-          "mean": 1.0123,
-          "std": 1.0699
+          "weight": 0.4282,
+          "mean": 1.0723,
+          "std": 1.0281
         },
         {
           "feature": "dbpm",
-          "weight": -0.4473,
-          "mean": -0.0074,
-          "std": 1.173
+          "weight": -0.4729,
+          "mean": 0.1084,
+          "std": 1.4382
         },
         {
           "feature": "blk",
-          "weight": 0.4291,
+          "weight": 0.5424,
           "mean": 0.4644,
           "std": 0.4493
         },
         {
           "feature": "stl",
-          "weight": 0.655,
+          "weight": 0.8649,
           "mean": 0.7336,
           "std": 0.433
         },
         {
           "feature": "dreb",
-          "weight": -0.0664,
+          "weight": -0.1179,
           "mean": 3.1917,
           "std": 1.8757
         },
         {
           "feature": "reb",
-          "weight": -0.043,
+          "weight": -0.0649,
           "mean": 4.1944,
           "std": 2.5068
         },
         {
           "feature": "pf",
-          "weight": 0.01,
+          "weight": 0.0232,
           "mean": 1.9692,
           "std": 0.7495
         },
         {
           "feature": "min",
-          "weight": -1.4109,
+          "weight": -1.3708,
           "mean": 23.3298,
           "std": 8.6284
         },
         {
           "feature": "gp",
-          "weight": -0.0806,
+          "weight": -0.3317,
           "mean": 44.2515,
           "std": 27.3051
         },
         {
           "feature": "min*dbpm",
-          "weight": 0.987,
-          "mean": 0.0246,
-          "std": 25.8706
+          "weight": 0.8237,
+          "mean": 3.1625,
+          "std": 33.5131
         },
         {
           "feature": "blk*min",
-          "weight": 0.525,
+          "weight": 0.3663,
           "mean": 12.0499,
           "std": 14.0913
         },
         {
           "feature": "stl*min",
-          "weight": 0.5739,
+          "weight": 0.2434,
           "mean": 19.5617,
           "std": 16.3264
         }
