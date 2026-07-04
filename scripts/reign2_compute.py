@@ -46,8 +46,10 @@ wrong"):
 Model:
   * standardization: centered 5-season window (+-2, clamped), qualified pool
     (>= 15 MPG) of the same season type (RS pools for RS rows, PO for PO)
-  * OFF  = .40 z(pts) + .20 z(tsp - lg) + .15 z(pts * tsp/lg) + .15 z(ast)
-           + .10 z(obpm)            [1973+; ows/gp before]
+  * OFF  = .45 z(pts * tsp/lg) + .35 z(obpm) + .10 z(tsp - lg)
+           + .10 z(ast) - .10 z(tov)     [obpm 1973+, ows/gp before;
+                                          tov untracked pre-1978 -> z = 0]
+    (weights team-attribution calibrated with guardrails -- see OFF_W)
   * DEF  tier A/B (1973+):  .35 z(dbpm) + .25 z(dws/gp) + .15 z*(stl)
                             + .15 z*(blk) + .10 z*(dreb)
          tier C (1950-72):  .60 z(dws/gp) + .25 z*(reb)  + role floor
@@ -101,7 +103,17 @@ def reliability(year):
             return DEF_RELIABILITY[a] + t * (DEF_RELIABILITY[b] - DEF_RELIABILITY[a])
     return 1.0
 
-OFF_W = [('pts', .40), ('eff', .20), ('voleff', .15), ('ast', .15), ('oimp', .10)]
+# OFF weights, v2.3: team-attribution calibrated (see calibrate_off).
+# Regressing within-season z(team ORtg) on minutes-weighted player component
+# z's over 806 team-seasons 1997+ gives R2 = 0.92 with raw coefficients
+#   pts -0.67, voleff +0.81, eff +0.07, ast -0.01, tov -0.31, oimp +2.70
+# -- i.e. volume WITHOUT efficiency actively hurts team offense (the
+# inefficiency cost), and OBPM carries the largest independent signal.
+# Guardrails from the proposal (no component > 0.5 -- tightened to 0.35 for
+# oimp so REIGN stays multi-component and era-portable given the pre-1973
+# OWS substitution; ast kept at a declared 0.10 floor for playmaking
+# credit): raw pts is dropped in favor of efficiency-scaled volume.
+OFF_W = [('voleff', .45), ('oimp', .35), ('eff', .10), ('ast', .10), ('tov', -.10)]
 DEF_AB = [('dbpm', .35), ('dws_pg', .25), ('stl', .15), ('blk', .15), ('dreb', .10)]
 DEF_C = [('dws_pg', .60), ('reb', .25)]
 DEF_D = [('dws_pg', .70)]
@@ -145,6 +157,7 @@ def features(r, win_tsp_mean):
         'dbpm': num(r.get('dbpm')),
         'dws_pg': (num(r.get('dws')) / gp) if gp and num(r.get('dws')) is not None else None,
     }
+    f['tov'] = num(r.get('tov'))
     tsp = num(r.get('tsp'))
     f['eff'] = (tsp - win_tsp_mean) if (tsp is not None and win_tsp_mean) else None
     f['voleff'] = (f['pts'] * tsp / win_tsp_mean) if (
@@ -201,7 +214,7 @@ def build_params(rows, stype, roles):
         vals = [num(r.get('tsp')) for yy in range(a, b + 1)
                 for r in by_year.get(yy, []) if num(r.get('tsp'))]
         tsp_mean[y] = st.mean(vals) if vals else None
-    stats = ['pts', 'ast', 'reb', 'stl', 'blk', 'dreb', 'dbpm', 'dws_pg', 'eff', 'voleff', 'oimp']
+    stats = ['pts', 'ast', 'reb', 'stl', 'blk', 'dreb', 'dbpm', 'dws_pg', 'eff', 'voleff', 'oimp', 'tov']
     feats_by_year = {y: [(features(r, tsp_mean[y]), roles[id(r)]) for r in by_year[y]]
                      for y in years}
     for y in years:
@@ -218,12 +231,26 @@ def build_params(rows, stype, roles):
     return params, tsp_mean
 
 
+Z_CAP = 4.0  # winsorize: beyond 4 sigma, separation from a thin pool is
+             # noise, not signal. Modern qualified pools (~350 players) never
+             # exceed it; 1940s-50s pools (~70-90) produce 6-7 sigma box
+             # outliers that would otherwise dominate the all-time boards.
+
+
 def z(f, s, p, role):
     key = (s, role) if s in ROLE_STATS else s
     if key not in p or f.get(s) is None:
         return 0.0  # missing input = league average, never a penalty
     m, sd = p[key]
-    return (f[s] - m) / sd
+    return max(-Z_CAP, min(Z_CAP, (f[s] - m) / sd))
+
+
+OFF_COMPS = ['pts', 'eff', 'voleff', 'ast', 'tov', 'oimp']
+
+
+def off_component_z(r, p, tsp_mean, role):
+    f = features(r, tsp_mean)
+    return {s: z(f, s, p, role) for s in OFF_COMPS}
 
 
 def raw_scores(r, p, tsp_mean, role):
@@ -252,12 +279,113 @@ def qtile(vals, pct):
     return vals[min(len(vals) - 1, int(pct * len(vals)))]
 
 
+def gauss_solve(A, bb):
+    n = len(A)
+    M = [row[:] + [bb[i]] for i, row in enumerate(A)]
+    for col in range(n):
+        piv = max(range(col, n), key=lambda r: abs(M[r][col]))
+        M[col], M[piv] = M[piv], M[col]
+        pv = M[col][col] or 1e-12
+        for r in range(n):
+            if r == col:
+                continue
+            f = M[r][col] / pv
+            for c in range(col, n + 1):
+                M[r][c] -= f * M[col][c]
+    return [M[i][n] / (M[i][i] or 1e-12) for i in range(n)]
+
+
+def calibrate_off(rows, team_csv):
+    """Team-attribution calibration: regress within-season z of team ORtg on
+    the minutes-weighted mean of players' OFF component z's (RS 1997+,
+    combined '2TM' rows excluded since they have no team). The weights that
+    make player scores add up to team offense are the empirical anchor --
+    and they naturally price inefficient volume."""
+    import csv as csvmod
+    import re as remod
+    ortg = {}
+    by_season = defaultdict(list)
+    for t in csvmod.DictReader(open(team_csv, encoding='utf-8')):
+        if (t.get('lg') == 'NBA' and t.get('o_rtg') not in (None, '', 'NA')
+                and t.get('abbreviation') not in (None, '', 'NA')):
+            season = int(t['season'])
+            ortg[(t['abbreviation'], season - 1)] = float(t['o_rtg'])  # our start-year keys
+            by_season[season - 1].append(float(t['o_rtg']))
+    zortg = {}
+    for (team, y), v in ortg.items():
+        grp = by_season[y]
+        m, sd = st.mean(grp), (st.pstdev(grp) or 1.0)
+        zortg[(team, y)] = (v - m) / sd
+
+    pool = [r for r in rows if r['type'] == 'RS' and r['year'] >= 1997]
+    roles = assign_roles([r for r in rows if r['type'] == 'RS'])
+    params, tsp_mean = build_params(rows, 'RS', roles)
+    agg = defaultdict(lambda: defaultdict(float))
+    wsum = defaultdict(float)
+    for r in pool:
+        team = r.get('team')
+        if not team or remod.fullmatch(r'\dTM', team) or team == 'TOT':
+            continue
+        p = params.get(r['year'])
+        if not p or (team, r['year']) not in zortg:
+            continue
+        wt = (num(r.get('min')) or 0) * (num(r.get('gp')) or 0)
+        if wt <= 0:
+            continue
+        cz = off_component_z(r, p, tsp_mean.get(r['year']), roles.get(id(r), 'wing'))
+        for k, v in cz.items():
+            agg[(team, r['year'])][k] += wt * v
+        wsum[(team, r['year'])] += wt
+
+    X, y = [], []
+    for key, comps in agg.items():
+        if wsum[key] < 48 * 82 * 3 * 0.6:  # require decent roster coverage
+            continue
+        X.append([comps[k] / wsum[key] for k in OFF_COMPS])
+        y.append(zortg[key])
+    k = len(OFF_COMPS)
+    n = len(X)
+    A = [[0.0] * (k + 1) for _ in range(k + 1)]
+    bb = [0.0] * (k + 1)
+    for i in range(n):
+        xi = [1.0] + X[i]
+        for a_ in range(k + 1):
+            bb[a_] += xi[a_] * y[i]
+            for c in range(k + 1):
+                A[a_][c] += xi[a_] * xi[c]
+    for d in range(1, k + 1):
+        A[d][d] += 1e-3
+    coef = gauss_solve(A, bb)
+    yhat = [coef[0] + sum(coef[j + 1] * X[i][j] for j in range(k)) for i in range(n)]
+    ybar = st.mean(y)
+    r2 = 1 - sum((y[i] - yhat[i]) ** 2 for i in range(n)) / (sum((v - ybar) ** 2 for v in y) or 1)
+    print(f'team-attribution calibration: {n} team-seasons, R2 = {r2:.3f}')
+    raw = dict(zip(OFF_COMPS, coef[1:]))
+    print('raw coefficients:', {k_: round(v, 3) for k_, v in raw.items()})
+    # normalize: positive components sum to 1; tov keeps its (negative) sign,
+    # capped at -0.20 relative
+    pos = {k_: max(0.0, v) for k_, v in raw.items() if k_ != 'tov'}
+    tot = sum(pos.values()) or 1.0
+    weights = [(k_, round(v / tot, 2)) for k_, v in pos.items() if v / tot >= 0.005]
+    tov_w = max(-0.20, min(0.0, raw['tov'] / tot))
+    if tov_w < -0.005:
+        weights.append(('tov', round(tov_w, 2)))
+    print('normalized OFF_W:', weights)
+    return weights
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--markdown', default=None)
     ap.add_argument('--lam', default='auto',
                     help="era-strength weight: 'auto' (solve the ordering constraint) or a float")
+    ap.add_argument('--calibrate-off', default=None, metavar='TEAM_CSV',
+                    help='run the team-attribution OFF weight calibration and exit')
     args = ap.parse_args()
+
+    if args.calibrate_off:
+        calibrate_off(load_rows(), args.calibrate_off)
+        return
 
     rows = load_rows()
     scored, role_of = {}, {}
@@ -359,9 +487,10 @@ def main():
     # ---------------- report ----------------
     lines = []
     w = lines.append
-    w('# REIGN 2.2 — full computation report\n')
+    w('# REIGN 2.3 — full computation report\n')
     w('Rolling 5-year windows · role-relative defense · cross-tier variance '
       'normalization · pre-2001 stl/blk scorekeeper-reliability shrinkage · '
+      'team-calibrated OFF weights · z winsorized at ±4 · '
       'declared talent-pool era-strength prior '
       f'(λ = {lam}, auto-solved so the best {CONSTRAINT_STAR} season is not '
       'below the best of Mikan/Wilt/Russell). No shipped data modified.\n')
@@ -388,7 +517,7 @@ def main():
     for era, (y0, y1) in ERA_OF.items():
         w(f'\n## {era} ({y0}–{y1}) — top 10 peak seasons\n')
         er = [r for r in qual if y0 <= r['year'] <= y1]
-        w('| # | REIGN 2.2 | v2 (OFF/DEF) | v1 | | v1 top 10 | v1 |')
+        w('| # | REIGN 2.3 | v2 (OFF/DEF) | v1 | | v1 top 10 | v1 |')
         w('|---|---|---|---|---|---|---|')
         t2 = sorted(er, key=lambda r: -r['v2'])[:10]
         t1 = sorted(er, key=lambda r: -r['v1'])[:10]
@@ -400,7 +529,7 @@ def main():
                   f"{t1[i]['v1']:+.1f}") if i < len(t1) else ' | '
             w(f'| {i + 1} | {l2} | | {l1} |')
 
-    w('\n## All-time top 20 peak seasons (REIGN 2.2, regular season)\n')
+    w('\n## All-time top 20 peak seasons (REIGN 2.3, regular season)\n')
     w('| # | player | season | v2 | OFF | DEF | v1 |')
     w('|---|---|---|---|---|---|---|')
     for i, r in enumerate(sorted(qual, key=lambda r: -r['v2'])[:20], 1):
