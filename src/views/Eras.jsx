@@ -1,9 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { formatReign } from '../utils/format';
-import { useJSON, useAllSeasons } from '../hooks/useData';
+import { useAllSeasons } from '../hooks/useData';
 import { PlayerCrest } from '../components/PlayerArt';
 import EraBadge from '../components/EraBadge';
-import Loading from '../components/Loading';
+import Loading, { LoadError } from '../components/Loading';
 import './Eras.css';
 
 const ERAS = [
@@ -42,7 +42,7 @@ function TopPlayers({ players, eraColor }) {
       {players.slice(0, 10).map((p, i) => (
         <div key={p.name + p.year} className={`era-tp-row${i < 3 ? ' era-tp-top3' : ''}`}>
           <span className="era-tp-rank" style={i < 3 ? { color: eraColor } : undefined}>
-            {i === 0 ? '👑' : `#${i + 1}`}
+            #{i + 1}
           </span>
           <span className="era-tp-name">{p.name}</span>
           <span className="era-tp-year">{p.year}-{String(p.year + 1).slice(-2)}</span>
@@ -55,13 +55,14 @@ function TopPlayers({ players, eraColor }) {
 }
 
 /* ═══ ERA EVOLUTION CHART (SVG) ═══ */
-function EvolutionChart({ seasons, stat, label, unit, color, seasonType }) {
+function EvolutionChart({ seasons, stat, label, unit, color, seasonType, minYear }) {
   const [hover, setHover] = useState(null);
   const { yearData, leaders } = useMemo(() => {
     const norm = v => (stat === 'tsp' && v <= 1) ? v * 100 : v;
     const byYear = {}, eraPeak = {};
     for (const s of seasons) {
       if (s.type !== (seasonType || 'RS') || (s.min || 0) < 15) continue;
+      if (minYear && s.year < minYear) continue; // stat not recorded yet — zeros would fake a flat line
       const val = norm(s[stat] || 0);
       (byYear[s.year] ||= []).push(val);
       if (val > 0 && (!eraPeak[s.era] || val > eraPeak[s.era].val)) eraPeak[s.era] = { val, name: s.name, year: s.year };
@@ -69,7 +70,7 @@ function EvolutionChart({ seasons, stat, label, unit, color, seasonType }) {
     const yearData = Object.entries(byYear).map(([yr, vals]) => ({ year: +yr, avg: vals.reduce((a, b) => a + b, 0) / vals.length })).sort((a, b) => a.year - b.year);
     const leaders = ERAS.map(e => eraPeak[e.id] ? { ...eraPeak[e.id], color: e.color } : null).filter(Boolean);
     return { yearData, leaders };
-  }, [seasons, stat, seasonType]);
+  }, [seasons, stat, seasonType, minYear]);
 
   if (yearData.length < 3) return null;
   const W = 620, H = 252, PAD = { t: 58, r: 18, b: 36, l: 50 };
@@ -195,8 +196,7 @@ function EraComparisonTable({ eraStats }) {
 
 /* ═══ MAIN ERA EXPLORER ═══ */
 export default function EraExplorer() {
-  const { data: seasons, loading } = useAllSeasons();
-  const { data: awards } = useJSON('/data/awards.json');
+  const { data: seasons, loading, error, retry } = useAllSeasons();
   const [selectedEra, setSelectedEra] = useState(null);
   const [seasonType, setSeasonType] = useState('RS');
 
@@ -247,6 +247,7 @@ export default function EraExplorer() {
     return tops;
   }, [seasons, seasonType]);
 
+  if (error) return <LoadError message="Couldn't load the season data." onRetry={retry} />;
   if (loading) return <Loading message="Loading era data..." />;
 
   const activeEra = selectedEra ? ERAS.find(e => e.id === selectedEra) : null;
@@ -334,11 +335,11 @@ export default function EraExplorer() {
           <div className="era-evo-grid">
             <EvolutionChart seasons={seasons} seasonType={seasonType} stat="pts" label="Scoring (PPG)" unit="" color="#D97706" />
             <EvolutionChart seasons={seasons} seasonType={seasonType} stat="tsp" label="True Shooting %" unit="%" color="#10B981" />
-            <EvolutionChart seasons={seasons} seasonType={seasonType} stat="fg3m" label="3-Pointers Made" unit="" color="#2563EB" />
+            <EvolutionChart seasons={seasons} seasonType={seasonType} stat="fg3m" label="3-Pointers Made · since '79-80" unit="" color="#2563EB" minYear={1979} />
             <EvolutionChart seasons={seasons} seasonType={seasonType} stat="ast" label="Assists (APG)" unit="" color="#8789C0" />
             <EvolutionChart seasons={seasons} seasonType={seasonType} stat="reb" label="Rebounds (RPG)" unit="" color="#92400e" />
-            <EvolutionChart seasons={seasons} seasonType={seasonType} stat="stl" label="Steals (SPG)" unit="" color="#06b6d4" />
-            <EvolutionChart seasons={seasons} seasonType={seasonType} stat="blk" label="Blocks (BPG)" unit="" color="#a78bfa" />
+            <EvolutionChart seasons={seasons} seasonType={seasonType} stat="stl" label="Steals (SPG) · tracked since '73-74" unit="" color="#06b6d4" minYear={1973} />
+            <EvolutionChart seasons={seasons} seasonType={seasonType} stat="blk" label="Blocks (BPG) · tracked since '73-74" unit="" color="#a78bfa" minYear={1973} />
             <EvolutionChart seasons={seasons} seasonType={seasonType} stat="reign" label="Avg REIGN Score" unit="" color="#065f46" />
           </div>
         </div>

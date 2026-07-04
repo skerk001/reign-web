@@ -1,4 +1,4 @@
-import { reignBg, offBg, defBg, textColor } from '../utils/heatmap';
+import { reignBg, textColor } from '../utils/heatmap';
 import './Methodology.css';
 
 const ERA_MODELS = [
@@ -8,8 +8,8 @@ const ERA_MODELS = [
     note: 'Steals and blocks arrive (1973-74), giving the first real defensive signal through the golden age of individual greatness.' },
   { id: 'Classic', color: '#2563EB', years: '1996–2012', off: 0.94, def: 0.86, inputs: 'OWS · OBPM · STL · DREB · DBPM',
     note: 'The richest box-and-advanced data — both components reconstruct strongly as the three-point era takes hold.' },
-  { id: 'Modern', color: '#10B981', years: '2013–25', off: 0.80, def: 0.48, inputs: 'PTS·TS% · OWS · STL · BLK · DBPM',
-    note: 'Offense holds up, but ~1/3 of seasons are missing the advanced metrics that drive defense — so REIGN_DEF is bounded by data coverage, not the model.' },
+  { id: 'Modern', color: '#10B981', years: '2013–26', off: 0.82, def: 0.53, inputs: 'PTS·TS% · OWS · STL · BLK · DBPM',
+    note: 'Regular-season advanced stats are now fully backfilled from Basketball-Reference; the remaining DEF gap comes from playoff rows that still lack advanced metrics — coverage, not the model.' },
 ];
 
 const TIERS = [
@@ -62,8 +62,9 @@ export default function Methodology() {
           <h2 className="mth-h2">The core idea: era-normalized z-scores</h2>
           <p className="mth-body">
             Basketball in 1960 barely resembles basketball in 2024 — pace, three-pointers, and even which stats were
-            recorded all changed. So REIGN doesn't compare raw numbers across time. Instead, every season is scored as a
-            <b> z-score within a rolling 5-year window</b> — i.e., relative to its own moment in history.
+            recorded all changed. So REIGN doesn't compare raw numbers across time. Instead, every statistic is
+            <b> standardized against the player's own era</b> — a z-score relative to the league that player actually
+            competed in, not to a fixed all-time yardstick.
           </p>
           <div className="mth-callout">
             A <b className="mth-reign">+20 REIGN</b> means the same level of relative dominance whether it was earned in
@@ -143,9 +144,9 @@ export default function Methodology() {
             <a className="mth-paper-btn" href="/REIGN_Methodology_Paper.pdf" target="_blank" rel="noopener noreferrer">Read the paper →</a>
           </div>
           <div className="mth-stats">
-            <span><b>29,969</b> player-seasons</span>
-            <span><b>3,484</b> players</span>
-            <span><b>1946–2025</b></span>
+            <span><b>29,200</b> player-seasons</span>
+            <span><b>3,609</b> players</span>
+            <span><b>1946–2026</b></span>
             <span><b>4</b> era models</span>
           </div>
         </section>

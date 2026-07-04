@@ -1,4 +1,7 @@
-@import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;0,8..60,800;1,8..60,400&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap');
+/* Self-hosted fonts (public/fonts) — replaces the render-blocking Google Fonts
+   @import. Latin + latin-ext subsets only (latin-ext covers Jokić/Dončić etc.);
+   unicode-range means the browser downloads only the subsets a page uses. */
+@import './fonts.css';
 
 :root {
   /* Warm white palette */
@@ -118,12 +121,14 @@ a:hover { text-decoration: underline; }
 .vc-btn.on { background: var(--mint); color: #08090A; }
 .vc-btn:hover:not(.on) { color: var(--ink); }
 
-/* ── Shared StatBloom styles (used on Players + Compare) ── */
-.bloom { display: flex; justify-content: center; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 20px 16px; }
-.bloom-svg { width: 100%; max-width: 480px; height: auto; overflow: visible; }
-.bloom-lbl { font-family: var(--font-body); font-size: 13px; font-weight: 800; fill: var(--ink); }
-.bloom-val { font-family: var(--font-mono); font-size: 15px; font-weight: 900; }
-.bloom-raw { font-family: var(--font-mono); font-size: 11px; font-weight: 700; fill: var(--muted); }
-.bloom-center-v { font-family: var(--font-mono); font-size: 22px; font-weight: 900; fill: var(--ink); }
-.bloom-center-l { font-size: 8px; font-weight: 800; fill: var(--faint); letter-spacing: 1px; }
+/* ── Shared percentile-bar styles (skill profile on Players + Compare) ── */
+.pbars { display: flex; flex-direction: column; gap: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; max-width: 560px; }
+.pbar-row { display: grid; grid-template-columns: 92px 1fr 46px 92px; align-items: center; gap: 10px; }
+.pbar-label { font-size: 0.8rem; font-weight: 800; color: var(--ink-2); }
+.pbar-track { position: relative; height: 12px; background: rgba(135,137,192,0.12); border-radius: 3px; overflow: hidden; }
+.pbar-fill { height: 100%; border-radius: 3px 2px 2px 3px; }
+.pbar-median { position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: rgba(244,246,255,0.35); z-index: 1; }
+.pbar-pct { font-family: var(--font-mono); font-size: 0.85rem; font-weight: 900; text-align: right; }
+.pbar-raw { font-family: var(--font-mono); font-size: 0.74rem; font-weight: 700; color: var(--muted); text-align: right; white-space: nowrap; }
+.pbar-foot { font-size: 0.68rem; color: var(--faint); font-weight: 600; padding-top: 4px; }
 

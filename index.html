@@ -17,12 +17,12 @@
     <meta name="twitter:image" content="https://fabulous-duckanoo-fd464c.netlify.app/og-image.png" />
     <meta name="theme-color" content="#08090A" />
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👑</text></svg>" />
-    <!-- Start the landing leaderboard's era data downloading during HTML parse.
-         crossorigin matches useAllSeasons' default fetch() so the preload is reused, not duplicated. -->
-    <link rel="preload" as="fetch" type="application/json" crossorigin href="/data/seasons_pioneer.json" />
-    <link rel="preload" as="fetch" type="application/json" crossorigin href="/data/seasons_legacy.json" />
-    <link rel="preload" as="fetch" type="application/json" crossorigin href="/data/seasons_classic.json" />
-    <link rel="preload" as="fetch" type="application/json" crossorigin href="/data/seasons_modern.json" />
+    <!-- Start the landing leaderboard's data downloading during HTML parse.
+         The landing view reads only the slim rankings.json index (~1MB gz);
+         the full 4 era files (~4MB gz) load on demand for Players/Compare/Eras,
+         so preloading them here would defeat the slim-index optimization.
+         crossorigin matches useJSON's fetch() so the preload is reused, not duplicated. -->
+    <link rel="preload" as="fetch" type="application/json" crossorigin href="/data/rankings.json" />
   </head>
   <body>
     <div id="root"></div>

@@ -17,7 +17,7 @@ function stripAccents(s) {
   return s.split('').map(c => ACCENT_MAP[c] || ACCENT_MAP[c.toLowerCase()] || c).join('');
 }
 
-function normalize(s) {
+export function normalize(s) {
   return stripAccents(s).toLowerCase().replace(/[''`]/g, '').replace(/\s+/g, ' ').trim();
 }
 

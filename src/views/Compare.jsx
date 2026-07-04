@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { formatReign, seasonLabel } from '../utils/format';
 import { fuzzySearch } from '../utils/fuzzySearch';
 import { useJSON, useAllSeasons } from '../hooks/useData';
 import { PlayerCrest } from '../components/PlayerArt';
-import { StatBloom } from '../components/PlayerCharts';
+import { PercentileBars } from '../components/PlayerCharts';
 import { reignBg, offBg, defBg, needsDark } from '../utils/heatmap';
-import Loading from '../components/Loading';
+import Loading, { LoadError } from '../components/Loading';
 import './Compare.css';
 
 /* ═══ HELPERS ═══ */
@@ -84,8 +84,6 @@ function StatCell({ v, best, stat }) {
   const isWinner = v != null && v === best;
   const isLoser = v != null && !isWinner;
   const heatFn = stat.heatFn;
-  const icon = stat.icon;
-  const showIcon = icon && v != null && v > 0;
 
   if (heatFn && v != null) {
     const bg = heatFn(v);
@@ -101,7 +99,6 @@ function StatCell({ v, best, stat }) {
   return (
     <div className={`cmp-stat-val ${isWinner ? 'winner' : isLoser ? 'loser' : ''}`}
       style={isWinner ? { background: 'rgba(93,253,203,0.1)' } : undefined}>
-      {showIcon && <span className="cmp-award-icon">{icon}</span>}
       {stat.fmt(v)}
     </div>
   );
@@ -116,9 +113,7 @@ function StatTable({ players, seasons, allPlayerRanks, stretches3, stretches5, s
       
       // Use adjusted REIGN for playoffs when enabled
       const getReign = (s) => (useOppAdj && seasonType === 'PO' && s.reign_adj != null) ? s.reign_adj : s.reign;
-      const getOff = (s) => (useOppAdj && seasonType === 'PO' && s.reign_off_adj != null) ? s.reign_off_adj : s.reign_off;
-      const getDef = (s) => (useOppAdj && seasonType === 'PO' && s.reign_def_adj != null) ? s.reign_def_adj : s.reign_def;
-      
+
       const peak = playerSeasons.length ? playerSeasons.reduce((a, b) => getReign(a) > getReign(b) ? a : b) : null;
       const avgReign = playerSeasons.length ? playerSeasons.reduce((s, r) => s + getReign(r), 0) / playerSeasons.length : null;
       const avgPts = playerSeasons.length ? playerSeasons.reduce((s, r) => s + (r.pts || 0), 0) / playerSeasons.length : null;
@@ -132,7 +127,9 @@ function StatTable({ players, seasons, allPlayerRanks, stretches3, stretches5, s
         ? playerSeasons.filter(r => r.fg3p > 0).reduce((s, r) => s + r.fg3p, 0) / playerSeasons.filter(r => r.fg3p > 0).length
         : null;
 
-      const teams = [...new Set(allRS.map(r => r.team))].slice(0, 3).join(' · ');
+      const rawTeams = [...new Set(allRS.map(r => r.team))];
+      const realTeams = rawTeams.filter(t => t && !/^\dTM$|^TOT$/.test(t));
+      const teams = (realTeams.length ? realTeams : rawTeams).slice(0, 3).join(' · ');
       const years = allRS.length ? `${allRS[0].year}–${String(allRS[allRS.length - 1].year + 1).slice(-2)}` : '';
       const playerAwards = awards?.find(a => a.name === name) || null;
 
@@ -146,7 +143,7 @@ function StatTable({ players, seasons, allPlayerRanks, stretches3, stretches5, s
         awards: playerAwards,
       };
     });
-  }, [players, seasons, allPlayerRanks, seasonType, awards]);
+  }, [players, seasons, allPlayerRanks, seasonType, awards, useOppAdj]);
 
   const n = playerData.length;
 
@@ -213,12 +210,12 @@ function StatTable({ players, seasons, allPlayerRanks, stretches3, stretches5, s
     {
       label: 'Awards',
       stats: [
-        { label: 'MVP', key: 'mvp', get: d => d.awards?.mvp || 0, fmt: v => v === 0 ? '—' : `${v}×`, higher: true, icon: '🏆' },
-        { label: 'Finals MVP', key: 'fmvp', get: d => d.awards?.fmvp || 0, fmt: v => v === 0 ? '—' : `${v}×`, higher: true, icon: '🏆' },
-        { label: 'DPOY', key: 'dpoy', get: d => d.awards?.dpoy || 0, fmt: v => v === 0 ? '—' : `${v}×`, higher: true, icon: '🛡️' },
-        { label: 'All-NBA', key: 'allnba', get: d => d.awards?.all_nba_total || 0, fmt: v => v === 0 ? '—' : `${v}×`, higher: true, icon: '⭐' },
-        { label: 'All-Def', key: 'alldef', get: d => d.awards?.all_def_total || 0, fmt: v => v === 0 ? '—' : `${v}×`, higher: true, icon: '🛡️' },
-        { label: 'All-Star', key: 'allstar', get: d => d.awards?.all_star || 0, fmt: v => v === 0 ? '—' : `${v}×`, higher: true, icon: '⭐' },
+        { label: 'MVP', key: 'mvp', get: d => d.awards?.mvp || 0, fmt: v => v === 0 ? '—' : `${v}×`, higher: true },
+        { label: 'Finals MVP', key: 'fmvp', get: d => d.awards?.fmvp || 0, fmt: v => v === 0 ? '—' : `${v}×`, higher: true },
+        { label: 'DPOY', key: 'dpoy', get: d => d.awards?.dpoy || 0, fmt: v => v === 0 ? '—' : `${v}×`, higher: true },
+        { label: 'All-NBA', key: 'allnba', get: d => d.awards?.all_nba_total || 0, fmt: v => v === 0 ? '—' : `${v}×`, higher: true },
+        { label: 'All-Def', key: 'alldef', get: d => d.awards?.all_def_total || 0, fmt: v => v === 0 ? '—' : `${v}×`, higher: true },
+        { label: 'All-Star', key: 'allstar', get: d => d.awards?.all_star || 0, fmt: v => v === 0 ? '—' : `${v}×`, higher: true },
         { label: 'MVP Share', key: 'mvpshare', get: d => d.awards?.mvp_share_total || 0, fmt: v => v === 0 ? '—' : v.toFixed(2), higher: true },
         { label: 'Peak Share', key: 'mvppeak', get: d => d.awards?.mvp_share_peak || 0, fmt: v => v === 0 ? '—' : v.toFixed(3), higher: true },
       ],
@@ -349,7 +346,7 @@ function PeakBars({ players, seasons, stretches3, stretches5, seasonType, useOpp
       });
     }
     return max * 1.1 || 30;
-  }, [players, seasons, stretches3, stretches5, seasonType]);
+  }, [players, seasons, stretches3, stretches5, seasonType, useOppAdj]);
 
   const windows = [
     {
@@ -537,7 +534,6 @@ function TrajectoryChart({ players, seasons, seasonType, useOppAdj }) {
 
 /* ═══ RADAR OVERLAY ═══ */
 function RadarOverlay({ players, seasons, seasonType, stretches3, stretches5, useOppAdj }) {
-  const [hovered, setHovered] = useState(null);
   const [radarWindow, setRadarWindow] = useState('peak');
   const getR = (s) => (useOppAdj && seasonType === 'PO' && s.reign_adj != null) ? s.reign_adj : s.reign;
   const getDef = (s) => (useOppAdj && seasonType === 'PO' && s.reign_def_adj != null) ? s.reign_def_adj : (s.reign_def || 0); // peak | 3yr | 5yr | career
@@ -604,15 +600,9 @@ function RadarOverlay({ players, seasons, seasonType, stretches3, stretches5, us
         ],
       };
     });
-  }, [players, seasons, allFiltered, seasonType, radarWindow, stretches3, stretches5]);
+  }, [players, seasons, allFiltered, seasonType, radarWindow, stretches3, stretches5, useOppAdj]);
 
   if (playerRadars.some(r => r === null)) return null;
-
-  const SIZE = 740, CX = SIZE / 2, CY = SIZE / 2, R = 165;
-  const N = 5;
-  const angles = Array.from({ length: N }, (_, i) => (Math.PI * 2 * i / N) - Math.PI / 2);
-  const point = (angle, pct) => ({ x: CX + Math.cos(angle) * R * (pct / 100), y: CY + Math.sin(angle) * R * (pct / 100) });
-  const rings = [25, 50, 75, 100];
 
   return (
     <div className="cmp-radar-card">
@@ -634,7 +624,7 @@ function RadarOverlay({ players, seasons, seasonType, stretches3, stretches5, us
             <div className="cmp-bloom-name" style={{ color: PLAYER_COLORS_LIGHT[pi] }}>
               {players[pi]}<span className="cmp-bloom-win"> · {pr.windowLabel}</span>
             </div>
-            <StatBloom data={pr.cats} accent={PLAYER_COLORS_LIGHT[pi]} />
+            <PercentileBars data={pr.cats} accent={PLAYER_COLORS_LIGHT[pi]} />
           </div>
         ))}
       </div>
@@ -645,7 +635,7 @@ function RadarOverlay({ players, seasons, seasonType, stretches3, stretches5, us
 
 /* ═══ MAIN COMPARE PAGE ═══ */
 export default function Compare({ initialPlayer, initialCompare, onClearInitial, onPlayersChange }) {
-  const { data: seasons, loading: loadSeasons } = useAllSeasons();
+  const { data: seasons, loading: loadSeasons, error: seasonsError, retry: retrySeasons } = useAllSeasons();
   const { data: awards } = useJSON('/data/awards.json');
 
   const [seasonType, setSeasonType] = useState('RS');
@@ -735,6 +725,7 @@ export default function Compare({ initialPlayer, initialCompare, onClearInitial,
     setSelectedPlayers(prev => prev.slice(0, 2));
   };
 
+  if (seasonsError) return <LoadError message="Couldn't load the comparison data." onRetry={retrySeasons} />;
   if (loadSeasons) return <Loading message="Loading comparison data..." />;
 
   const slots = showThird ? 3 : 2;

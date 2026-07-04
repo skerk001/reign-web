@@ -1,8 +1,9 @@
-import { useState, useRef, useMemo } from 'react';
-import Loading from '../components/Loading';
+import { useState, useMemo } from 'react';
+import Loading, { LoadError } from '../components/Loading';
 import { formatReign } from '../utils/format';
 import { useJSON } from '../hooks/useData';
 import { PlayerCrest } from '../components/PlayerArt';
+import { teamPalette } from '../utils/playerArt';
 import './Viz.css';
 
 const EC = { Pioneer: '#8789C0', Legacy: '#D97706', Classic: '#2563EB', Modern: '#10B981' };
@@ -34,10 +35,11 @@ function Tip({ pos, children }) {
 }
 
 export default function Visualizations() {
-  const { data: viz, loading } = useJSON('/data/viz.json');
+  const { data: viz, loading, error, retry } = useJSON('/data/viz.json');
   const [seasonType, setSeasonType] = useState('RS');
   const [eraFilter, setEraFilter] = useState('All');
 
+  if (error) return <LoadError message="Couldn't load the visualizations data." onRetry={retry} />;
   if (loading || !viz) return <Loading message="Loading visualizations..." />;
 
   return (
@@ -99,6 +101,7 @@ export default function Visualizations() {
           <YearlyTop3 data={viz.yearlyTop3[seasonType]} />
           <PeakAge data={viz.peakAge[seasonType][eraFilter]} />
           <ClutchTop25 data={viz.clutchTop25} />
+          {viz.dynasties && <Dynasties data={viz.dynasties} />}
         </div>
       </div>
     </div>
@@ -123,6 +126,14 @@ function LeagueEvolution({ data }) {
   const tsPath = data.map(d => `${xs(d.year).toFixed(1)},${tsY(d.avgTS).toFixed(1)}`).join(' ');
   const ppPath = data.map(d => `${xs(d.year).toFixed(1)},${ppY(d.avgPPG).toFixed(1)}`).join(' ');
   const bands = [['Pioneer', 1946, 1962], ['Legacy', 1963, 1995], ['Classic', 1996, 2012], ['Modern', 2013, 2026]];
+  // Rule changes that reshaped the league — annotated on the chart itself.
+  const RULES = [
+    [1954, '24-sec shot clock'],
+    [1976, 'ABA merger'],
+    [1979, '3-point line'],
+    [2001, 'Zone defense legal'],
+    [2004, 'Hand-check ban'],
+  ];
   const onMove = e => {
     const { x, px, py } = vbPoint(e, W, H);
     const yr = Math.round(y0 + ((x - P.l) / (W - P.l - P.r)) * (y1 - y0));
@@ -130,13 +141,20 @@ function LeagueEvolution({ data }) {
     if (idx >= 0) setHi({ d: data[idx], px, py });
   };
   return (
-    <Card span="wide" title="League Evolution" desc="Scoring (gold) and shooting efficiency (mint) across 80 years — era bands mark the regime changes.">
+    <Card span="wide" title="League Evolution" desc="Scoring (gold) and shooting efficiency (mint) across 80 years — era bands and rule changes mark the regime shifts.">
       <div className="vchart" onMouseMove={onMove} onMouseLeave={() => setHi(null)}>
         <svg viewBox={`0 0 ${W} ${H}`} className="vsvg">
           {bands.map(([era, a, b]) => <rect key={era} x={xs(Math.max(a, y0))} y={P.t} width={xs(Math.min(b, y1)) - xs(Math.max(a, y0))} height={H - P.t - P.b} fill={EC[era]} opacity={0.07} />)}
           {tsTicks.map(v => <g key={v}><line x1={P.l} y1={tsY(v)} x2={W - P.r} y2={tsY(v)} stroke="rgba(135,137,192,0.1)" /><text x={P.l - 8} y={tsY(v) + 4} textAnchor="end" className="vaxis" fill={MINT}>{v}</text></g>)}
           {ppTicks.map(v => <text key={v} x={W - P.r + 8} y={ppY(v) + 4} className="vaxis" fill={GOLD}>{v}</text>)}
           {bands.map(([era, a]) => a >= y0 && a <= y1 && <text key={era} x={xs(a) + 4} y={P.t + 13} className="vband">{era}</text>)}
+          {RULES.map(([yr, label], i) => yr >= y0 && yr <= y1 && (
+            <g key={yr} opacity="0.85">
+              <line x1={xs(yr)} y1={P.t + 34} x2={xs(yr)} y2={H - P.b} stroke="rgba(244,246,255,0.28)" strokeDasharray="2 4" />
+              <circle cx={xs(yr)} cy={P.t + 34} r="2.2" fill="#c9cdec" />
+              <text x={xs(yr) + 5} y={P.t + (i % 2 ? 28 : 40)} className="vrule">{label} '{String(yr + 1).slice(-2)}</text>
+            </g>
+          ))}
           <polyline points={ppPath} fill="none" stroke={GOLD} strokeWidth="3" strokeLinejoin="round" />
           <polyline points={tsPath} fill="none" stroke={MINT} strokeWidth="3" strokeLinejoin="round" />
           {data.filter((_, i) => i % 6 === 0).map(d => <text key={d.year} x={xs(d.year)} y={H - 14} textAnchor="middle" className="vaxis">'{String(d.year + 1).slice(-2)}</text>)}
@@ -154,7 +172,11 @@ function OffDefScatter({ data, eraFilter }) {
   const [hi, setHi] = useState(null);
   const pts = useMemo(() => eraFilter === 'All' ? data : data.filter(d => d.era === eraFilter), [data, eraFilter]);
   const W = 1000, H = 460, P = { t: 20, r: 24, b: 40, l: 46 };
-  const xMax = 22, yMin = -2, yMax = 12;
+  // Domain grows to fit the data (playoff DEF reaches +20, OFF +23) so no
+  // point ever lands outside the plot; the floors keep the RS view stable.
+  const xMax = Math.max(22, ...data.map(d => d.off + 0.5));
+  const yMin = Math.min(-2, ...data.map(d => d.def - 0.5));
+  const yMax = Math.max(12, ...data.map(d => d.def + 0.5));
   const xs = v => P.l + (v / xMax) * (W - P.l - P.r);
   const ys = v => P.t + (1 - (v - yMin) / (yMax - yMin)) * (H - P.t - P.b);
   return (
@@ -173,7 +195,7 @@ function OffDefScatter({ data, eraFilter }) {
           <text x={xs(17)} y={ys(0.5)} className="vquad">OFFENSIVE STAR</text>
           <text x={xs(2)} y={ys(9)} className="vquad">DEFENSIVE ANCHOR</text>
         </svg>
-        {hi && <Tip pos={hi}><b>{hi.d.name} '{String(hi.d.year + 1).slice(-2)}</b><span>OFF +{hi.d.off} · DEF +{hi.d.def}</span><span style={{ color: MINT }}>REIGN +{hi.d.reign}</span></Tip>}
+        {hi && <Tip pos={hi}><b>{hi.d.name} '{String(hi.d.year + 1).slice(-2)}</b><span>OFF {formatReign(hi.d.off)} · DEF {formatReign(hi.d.def)}</span><span style={{ color: MINT }}>REIGN {formatReign(hi.d.reign)}</span></Tip>}
       </div>
     </Card>
   );
@@ -201,7 +223,7 @@ function YearlyTop3({ data }) {
               </g>
             );
           })}
-          {data.filter((_, i) => i % 6 === 0).map((d, i) => <text key={d.year} x={P.l + data.indexOf(d) * bw + bw / 2} y={H - 14} textAnchor="middle" className="vaxis">'{String(d.year + 1).slice(-2)}</text>)}
+          {data.filter((_, i) => i % 6 === 0).map(d => <text key={d.year} x={P.l + data.indexOf(d) * bw + bw / 2} y={H - 14} textAnchor="middle" className="vaxis">'{String(d.year + 1).slice(-2)}</text>)}
         </svg>
         {hi && <Tip pos={hi}><b>'{String(hi.d.year + 1).slice(-2)} Season</b>{hi.d.top.map((t, j) => <span key={j} style={{ color: shades[j] === '#a7f3d0' ? '#a7f3d0' : shades[j] === '#10B981' ? '#10B981' : MINT }}>#{j + 1} {t.name} · +{t.reign}</span>)}</Tip>}
       </div>
@@ -240,6 +262,39 @@ function PeakAge({ data }) {
   );
 }
 
+/* ═══ Dynasty Tracker — best 5-season team runs ═══ */
+function Dynasties({ data }) {
+  const [hi, setHi] = useState(null);
+  const W = 1000, rowH = 30, P = { t: 8, r: 60, b: 8, l: 150 };
+  const H = P.t + P.b + data.length * rowH;
+  const max = Math.max(...data.map(d => d.total));
+  const xs = v => P.l + (v / max) * (W - P.l - P.r);
+  return (
+    <Card span="wide" title="Dynasty Tracker" desc="Each franchise's best 5-season run, scored by the summed REIGN of its qualified players. Hover for the run's pillars.">
+      <div className="vchart" onMouseLeave={() => setHi(null)}>
+        <svg viewBox={`0 0 ${W} ${H}`} className="vsvg" style={{ maxHeight: 'none' }}>
+          {data.map((d, i) => {
+            const y = P.t + i * rowH;
+            const { primary, accent } = teamPalette(d.team);
+            return (
+              <g key={d.team} onMouseEnter={e => setHi({ d, ...vbPoint(e, W, H) })}>
+                <rect x={0} y={y} width={W} height={rowH} fill={hi?.d === d ? 'rgba(255,255,255,0.04)' : 'transparent'} />
+                <text x={P.l - 8} y={y + rowH / 2 + 4} textAnchor="end" className="vname">
+                  {d.team} '{String(d.ys + 1).slice(-2)}–'{String(d.ye + 1).slice(-2)}
+                </text>
+                <rect x={P.l} y={y + 5} width={Math.max(2, xs(d.total) - P.l)} height={rowH - 10} rx={3}
+                  fill={primary} stroke={accent} strokeWidth="1" opacity={hi && hi.d !== d ? 0.45 : 0.95} />
+                <text x={xs(d.total) + 6} y={y + rowH / 2 + 4} className="vbarval">{d.total}</text>
+              </g>
+            );
+          })}
+        </svg>
+        {hi && <Tip pos={hi}><b>{hi.d.team} '{String(hi.d.ys + 1).slice(-2)}–'{String(hi.d.ye + 1).slice(-2)} — {hi.d.total} team REIGN</b>{hi.d.top.map(p => <span key={p.name}>{p.name} · +{p.reign} over the run</span>)}</Tip>}
+      </div>
+    </Card>
+  );
+}
+
 /* ═══ Clutch Top 25 — horizontal bars ═══ */
 function ClutchTop25({ data }) {
   const [hi, setHi] = useState(null);
@@ -248,7 +303,7 @@ function ClutchTop25({ data }) {
   const max = Math.max(...data.map(d => d.tot_pts));
   const xs = v => P.l + (v / max) * (W - P.l - P.r);
   return (
-    <Card span="half" title="Clutch Careers — Top 25" desc="Most total clutch points (last 5 min, ≤5 pt game). Bar = total points, sorted by clutch PPG.">
+    <Card span="half" title="Clutch Careers — Top 25" desc="Most total clutch points (last 5 min, ≤5 pt game). Bar = total points · number = clutch PPG.">
       <div className="vchart" onMouseLeave={() => setHi(null)}>
         <svg viewBox={`0 0 ${W} ${H}`} className="vsvg" style={{ maxHeight: 'none' }}>
           {data.map((d, i) => {
@@ -263,7 +318,7 @@ function ClutchTop25({ data }) {
             );
           })}
         </svg>
-        {hi && <Tip pos={hi}><b>{hi.d.name}</b><span style={{ color: GOLD }}>{hi.d.tot_pts} total clutch pts</span><span>{hi.d.avg_ppg} PPG · +{hi.d.tot_pm} +/− · {hi.d.gp} GP</span></Tip>}
+        {hi && <Tip pos={hi}><b>{hi.d.name}</b><span style={{ color: GOLD }}>{hi.d.tot_pts} total clutch pts</span><span>{hi.d.avg_ppg} PPG · {hi.d.tot_pm >= 0 ? '+' : ''}{hi.d.tot_pm} +/− · {hi.d.gp} GP</span></Tip>}
       </div>
     </Card>
   );
