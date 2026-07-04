@@ -21,6 +21,16 @@ wrong"):
   * CROSS-TIER DEF VARIANCE: the sparse pre-1973 DEF tiers are rescaled to
     the post-1973 qualified spread (kills +20 DEF outliers), and total DEF
     spread is balanced to v1's OFF/DEF ratio.
+  * DEFENSIVE-STAT RELIABILITY (v2.2): steals/blocks before the video-
+    review era are documented as scorekeeper-inflated, selectively for
+    stars (e.g. Jordan's 1987-88 DPOY season shows ~2x home-vs-road
+    steal/block rates). Season aggregates carry no home/road splits, so a
+    direct correction is impossible -- instead the measurement-error-correct
+    response: shrink stl/blk z-scores toward league average by a declared
+    reliability factor (0.65 at introduction in 1973-74, 0.85 by the 1997
+    play-by-play era, 1.0 from 2001), and dbpm by its square root (BPM
+    inherits the same inputs, diluted). Extreme (padded) values compress
+    hardest; average seasons barely move.
   * ERA-STRENGTH PRIOR: within-league z-scores measure separation from
     peers, which conflates dominance with league depth -- a 6-sigma outlier
     in a 10-team, pre-integration league is cheap. An empirical chained
@@ -73,6 +83,23 @@ POOL = {1946: .14, 1950: .17, 1955: .22, 1960: .32, 1965: .45, 1970: .58,
         2005: 1.12, 2010: 1.17, 2015: 1.21, 2020: 1.24, 2026: 1.26}
 
 ROLE_STATS = {'reb', 'dreb', 'stl', 'blk'}  # standardized within guard/wing/big
+
+# Reliability of recorded steals/blocks (scorekeeper-bias shrinkage).
+# Anchors: hand-tallied introduction (1973-74), public play-by-play era
+# (1996-97), league-wide video review / stat auditing (~2000-01).
+DEF_RELIABILITY = {1973: .65, 1990: .75, 1997: .85, 2001: 1.0}
+
+
+def reliability(year):
+    if year >= 2001:
+        return 1.0
+    ys = sorted(DEF_RELIABILITY)
+    year = max(ys[0], min(ys[-1], year))
+    for a, b in zip(ys, ys[1:]):
+        if a <= year <= b:
+            t = (year - a) / (b - a) if b > a else 0
+            return DEF_RELIABILITY[a] + t * (DEF_RELIABILITY[b] - DEF_RELIABILITY[a])
+    return 1.0
 
 OFF_W = [('pts', .40), ('eff', .20), ('voleff', .15), ('ast', .15), ('oimp', .10)]
 DEF_AB = [('dbpm', .35), ('dws_pg', .25), ('stl', .15), ('blk', .15), ('dreb', .10)]
@@ -203,7 +230,9 @@ def raw_scores(r, p, tsp_mean, role):
     f = features(r, tsp_mean)
     off = sum(w * z(f, s, p, role) for s, w in OFF_W)
     if r['year'] >= 1973:
-        dfn = sum(w * z(f, s, p, role) for s, w in DEF_AB)
+        rel = reliability(r['year'])
+        shrink = {'stl': rel, 'blk': rel, 'dbpm': math.sqrt(rel)}
+        dfn = sum(w * z(f, s, p, role) * shrink.get(s, 1.0) for s, w in DEF_AB)
     elif r['year'] >= 1950:
         dfn = sum(w * z(f, s, p, role) for s, w in DEF_C)
     else:
@@ -330,9 +359,10 @@ def main():
     # ---------------- report ----------------
     lines = []
     w = lines.append
-    w('# REIGN 2.1 — full computation report\n')
+    w('# REIGN 2.2 — full computation report\n')
     w('Rolling 5-year windows · role-relative defense · cross-tier variance '
-      'normalization · declared talent-pool era-strength prior '
+      'normalization · pre-2001 stl/blk scorekeeper-reliability shrinkage · '
+      'declared talent-pool era-strength prior '
       f'(λ = {lam}, auto-solved so the best {CONSTRAINT_STAR} season is not '
       'below the best of Mikan/Wilt/Russell). No shipped data modified.\n')
 
@@ -358,7 +388,7 @@ def main():
     for era, (y0, y1) in ERA_OF.items():
         w(f'\n## {era} ({y0}–{y1}) — top 10 peak seasons\n')
         er = [r for r in qual if y0 <= r['year'] <= y1]
-        w('| # | REIGN 2.1 | v2 (OFF/DEF) | v1 | | v1 top 10 | v1 |')
+        w('| # | REIGN 2.2 | v2 (OFF/DEF) | v1 | | v1 top 10 | v1 |')
         w('|---|---|---|---|---|---|---|')
         t2 = sorted(er, key=lambda r: -r['v2'])[:10]
         t1 = sorted(er, key=lambda r: -r['v1'])[:10]
@@ -370,7 +400,7 @@ def main():
                   f"{t1[i]['v1']:+.1f}") if i < len(t1) else ' | '
             w(f'| {i + 1} | {l2} | | {l1} |')
 
-    w('\n## All-time top 20 peak seasons (REIGN 2.1, regular season)\n')
+    w('\n## All-time top 20 peak seasons (REIGN 2.2, regular season)\n')
     w('| # | player | season | v2 | OFF | DEF | v1 |')
     w('|---|---|---|---|---|---|---|')
     for i, r in enumerate(sorted(qual, key=lambda r: -r['v2'])[:20], 1):
