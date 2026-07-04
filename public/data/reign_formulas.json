@@ -483,97 +483,97 @@
   "modern": {
     "reign_off": {
       "n": 7337,
-      "r2": 0.8219,
-      "mae": 0.9517,
-      "intercept": 1.6397,
+      "r2": 0.8228,
+      "mae": 0.9434,
+      "intercept": 1.6318,
       "terms": [
         {
           "feature": "ows",
-          "weight": 0.6754,
+          "weight": 0.6522,
           "mean": 1.1304,
           "std": 1.7729
         },
         {
           "feature": "obpm",
-          "weight": -0.9684,
+          "weight": -0.9704,
           "mean": -0.4683,
           "std": 2.4373
         },
         {
           "feature": "vorp",
-          "weight": 0.0017,
+          "weight": -0.0145,
           "mean": 0.5319,
           "std": 1.175
         },
         {
           "feature": "per",
-          "weight": -1.1022,
+          "weight": -1.1668,
           "mean": 10.4951,
           "std": 7.4404
         },
         {
           "feature": "ws48",
-          "weight": 0.6215,
+          "weight": 0.6312,
           "mean": 0.0683,
           "std": 0.0698
         },
         {
           "feature": "pts",
-          "weight": 6.5883,
+          "weight": 6.9574,
           "mean": 10.4002,
           "std": 6.4643
         },
         {
           "feature": "ast",
-          "weight": 0.8764,
+          "weight": 0.8798,
           "mean": 2.2884,
           "std": 1.9221
         },
         {
           "feature": "tsp",
-          "weight": -0.412,
+          "weight": -0.4028,
           "mean": 0.5515,
           "std": 0.0848
         },
         {
           "feature": "ftm",
-          "weight": -1.1603,
+          "weight": -1.1822,
           "mean": 1.7025,
           "std": 1.5544
         },
         {
           "feature": "fga",
-          "weight": -6.023,
+          "weight": -6.1585,
           "mean": 8.341,
           "std": 4.8587
         },
         {
           "feature": "min",
-          "weight": 0.8367,
+          "weight": 0.8201,
           "mean": 23.33,
           "std": 8.6268
         },
         {
           "feature": "gp",
-          "weight": 0.2791,
+          "weight": 0.3372,
           "mean": 44.2515,
           "std": 27.3051
         },
         {
           "feature": "pts*tsp",
-          "weight": 2.0872,
+          "weight": 1.8732,
           "mean": 5.8662,
           "std": 3.8674
         },
         {
           "feature": "min*ws48",
-          "weight": -0.1466,
+          "weight": -0.1248,
           "mean": 1.662,
           "std": 1.832
         },
         {
           "feature": "min*obpm",
-          "weight": 1.2239,
+          "weight": 1.265,
           "mean": -1.6388,
           "std": 54.2781
         }
@@ -581,79 +581,79 @@
     },
     "reign_def": {
       "n": 7337,
-      "r2": 0.5317,
-      "mae": 0.7727,
-      "intercept": 0.7279,
+      "r2": 0.5316,
+      "mae": 0.7709,
+      "intercept": 0.7274,
       "terms": [
         {
           "feature": "dws",
-          "weight": 0.0104,
+          "weight": 0.0037,
           "mean": 1.0121,
           "std": 1.0699
         },
         {
           "feature": "dbpm",
-          "weight": -0.4429,
+          "weight": -0.4468,
           "mean": -0.0068,
           "std": 1.1747
         },
         {
           "feature": "blk",
-          "weight": 0.4244,
+          "weight": 0.4289,
           "mean": 0.4645,
           "std": 0.4493
         },
         {
           "feature": "stl",
-          "weight": 0.6662,
+          "weight": 0.6637,
           "mean": 0.7338,
           "std": 0.4329
         },
         {
           "feature": "dreb",
-          "weight": -0.0714,
+          "weight": -0.0657,
           "mean": 3.1919,
           "std": 1.8756
         },
         {
           "feature": "reb",
-          "weight": -0.0399,
+          "weight": -0.0445,
           "mean": 4.1946,
           "std": 2.5068
         },
         {
           "feature": "pf",
-          "weight": 0.0072,
+          "weight": 0.0068,
           "mean": 1.9693,
           "std": 0.7494
         },
         {
           "feature": "min",
-          "weight": -1.4149,
+          "weight": -1.41,
           "mean": 23.33,
           "std": 8.6268
         },
         {
           "feature": "gp",
-          "weight": -0.0836,
+          "weight": -0.0782,
           "mean": 44.2515,
           "std": 27.3051
         },
         {
           "feature": "min*dbpm",
-          "weight": 0.9795,
+          "weight": 0.9874,
           "mean": 0.0298,
           "std": 25.8896
         },
         {
           "feature": "blk*min",
-          "weight": 0.5347,
+          "weight": 0.529,
           "mean": 12.0515,
           "std": 14.0881
         },
         {
           "feature": "stl*min",
-          "weight": 0.5652,
+          "weight": 0.5661,
           "mean": 19.563,
           "std": 16.3259
         }
