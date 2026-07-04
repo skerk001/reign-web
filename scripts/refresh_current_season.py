@@ -117,7 +117,10 @@ def parse_table(page, field_map):
 
         name = clean(cells.get('name_display') or cells.get('player') or '')
         team = clean(cells.get('team_name_abbr') or cells.get('team_id') or '')
-        if not name:
+        # bref repeats its header row mid-table and appends a league-average
+        # row; both parse as 'players' and previously leaked into the data
+        # (a literal "Player (Tm)" carried a REIGN score and a careers entry).
+        if not name or name in ('Player', 'League Average'):
             continue
         rec = {}
         for stat, field in field_map.items():

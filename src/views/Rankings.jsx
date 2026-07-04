@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { formatReign } from '../utils/format';
+import { normalize } from '../utils/fuzzySearch';
 import { useJSON, useAllSeasons } from '../hooks/useData';
 import { PlayerCrest } from '../components/PlayerArt';
 import { reignBg, offBg, defBg, relTsBg, needsDark, clutchBg as clutchPMBg } from '../utils/heatmap';
@@ -66,7 +67,7 @@ export default function Rankings({ onPlayerClick }) {
         if (!careerClutch) return [];
         let list = [...careerClutch];
         if (era !== 'All') list = list.filter(r => r.eras && r.eras.includes(era));
-        if (search.trim()) { const q = search.toLowerCase(); list = list.filter(r => r.name.toLowerCase().includes(q)); }
+        if (search.trim()) { const q = normalize(search); list = list.filter(r => normalize(r.name).includes(q)); }
         const isRS = seasonType === 'RS';
         return list.map(r => ({
           name: r.name, team: (r.teams||[]).slice(0,3).join(' · '), era: r.eras?.[0],
@@ -91,7 +92,7 @@ export default function Rankings({ onPlayerClick }) {
       let list = fullSeasons.filter(r => r.type === seasonType);
       list = list.filter(r => isRS ? r.clutch_pm != null : r.po_clutch_pm != null);
       if (era !== 'All') list = list.filter(r => r.era === era);
-      if (search.trim()) { const q = search.toLowerCase(); list = list.filter(r => r.name.toLowerCase().includes(q)); }
+      if (search.trim()) { const q = normalize(search); list = list.filter(r => normalize(r.name).includes(q)); }
       return list.map(r => {
         const pre = isRS ? 'clutch_' : 'po_clutch_';
         return {
@@ -116,8 +117,8 @@ export default function Rankings({ onPlayerClick }) {
       if (qualified) list = list.filter(r => (r.min || 0) >= 15);
       if (era !== 'All') list = list.filter(r => r.era === era);
       if (search.trim()) {
-        const q = search.toLowerCase();
-        list = list.filter(r => r.name.toLowerCase().includes(q));
+        const q = normalize(search);
+        list = list.filter(r => normalize(r.name).includes(q));
       }
       // Map to uniform row shape
       return list.map(r => ({
@@ -133,8 +134,8 @@ export default function Rankings({ onPlayerClick }) {
       let list = [...stretches];
       if (era !== 'All') list = list.filter(r => r.eras && r.eras.includes(era));
       if (search.trim()) {
-        const q = search.toLowerCase();
-        list = list.filter(r => r.name.toLowerCase().includes(q));
+        const q = normalize(search);
+        list = list.filter(r => normalize(r.name).includes(q));
       }
       return list.map(r => ({
         name: r.name, teams: r.teams, eras: r.eras,
@@ -151,8 +152,8 @@ export default function Rankings({ onPlayerClick }) {
       let list = [...stretches];
       if (era !== 'All') list = list.filter(r => r.eras && r.eras.includes(era));
       if (search.trim()) {
-        const q = search.toLowerCase();
-        list = list.filter(r => r.name.toLowerCase().includes(q));
+        const q = normalize(search);
+        list = list.filter(r => normalize(r.name).includes(q));
       }
       return list.map(r => ({
         name: r.name, teams: r.teams, eras: r.eras,
