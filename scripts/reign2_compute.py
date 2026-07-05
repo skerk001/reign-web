@@ -27,7 +27,7 @@ wrong"):
     steal/block rates). Season aggregates carry no home/road splits, so a
     direct correction is impossible -- instead the measurement-error-correct
     response: shrink stl/blk z-scores toward league average by a declared
-    reliability factor (0.65 at introduction in 1973-74, 0.85 by the 1997
+    reliability factor (0.75 at introduction in 1973-74, 0.90 by the 1997
     play-by-play era, 1.0 from 2001), and dbpm by its square root (BPM
     inherits the same inputs, diluted). Extreme (padded) values compress
     hardest; average seasons barely move.
@@ -38,6 +38,19 @@ wrong"):
     --calibrate-def mode shows why the term is needed: individual box
     components alone explain far less of team defense than OFF components
     explain of team offense.
+  * v2.5 (maintainer review: "Mikan shouldn't be top-5; centers devalued
+    too much; era greats like Wilt/Shaq/Kareem/Jokic/CP3/Duncan/Magic/Bird
+    should headline their eras; top-10 mostly LeBron/Jordan"):
+      - ROLE DEFENSIVE-IMPACT multiplier (big 1.15 / wing 1.0 / guard .95):
+        role-relative z restores within-role fairness, this restores the
+        between-role reality that rim protection anchors defenses.
+      - LOAD term in OFF: z(minutes) within the era window -- sustaining
+        production over a 40-minute burden beats 34, era-fair because each
+        season is compared to its own league's minute norms.
+      - Playmaking floor .10 -> .15; reliability floor softened to .75 (the
+        v2.2 value stacked three shrinkages on 1980s guards); Z_CAP 4.5;
+        lambda-auto constraint extended: no pre-1960 season in the all-time
+        top 5. Era boards report best-season-per-player.
   * ERA-STRENGTH PRIOR: within-league z-scores measure separation from
     peers, which conflates dominance with league depth -- a 6-sigma outlier
     in a 10-team, pre-integration league is cheap. An empirical chained
@@ -94,10 +107,18 @@ POOL = {1946: .14, 1950: .17, 1955: .22, 1960: .32, 1965: .45, 1970: .58,
 
 ROLE_STATS = {'reb', 'dreb', 'stl', 'blk'}  # standardized within guard/wing/big
 
+# Role defensive-impact multiplier (v2.5). Role-relative z restores fairness
+# WITHIN roles but flattens the between-role reality that rim protection
+# anchors defenses -- impact-metric distributions (DRAPM/DPM) consistently
+# show bigs dominating the defensive top end. Applied after the within-role
+# standardization: compare centers to centers, then weight the role's
+# defensive importance.
+ROLE_DEF_IMPACT = {'big': 1.15, 'wing': 1.0, 'guard': 0.95}
+
 # Reliability of recorded steals/blocks (scorekeeper-bias shrinkage).
 # Anchors: hand-tallied introduction (1973-74), public play-by-play era
 # (1996-97), league-wide video review / stat auditing (~2000-01).
-DEF_RELIABILITY = {1973: .65, 1990: .75, 1997: .85, 2001: 1.0}
+DEF_RELIABILITY = {1973: .75, 1990: .82, 1997: .90, 2001: 1.0}
 
 
 def reliability(year):
@@ -121,7 +142,14 @@ def reliability(year):
 # oimp so REIGN stays multi-component and era-portable given the pre-1973
 # OWS substitution; ast kept at a declared 0.10 floor for playmaking
 # credit): raw pts is dropped in favor of efficiency-scaled volume.
-OFF_W = [('voleff', .45), ('oimp', .35), ('eff', .10), ('ast', .10), ('tov', -.10)]
+# v2.5: playmaking floor raised to .15 (funded from voleff) after review --
+# .10 undercredited pure creators (Magic, CP3) relative to their impact.
+# v2.5 also adds a LOAD term: z(minutes) within the era window. Sustaining
+# production over a 40-minute burden is more valuable than over 34, and the
+# within-window z makes it era-fair (each season is compared to its own
+# league's minute norms, so high-minute eras don't leak an advantage).
+OFF_W = [('voleff', .40), ('oimp', .30), ('ast', .15), ('load', .10),
+         ('eff', .05), ('tov', -.10)]
 DEF_AB = [('dbpm', .25), ('dws_pg', .20), ('teamdef', .15),
           ('stl', .15), ('blk', .15), ('dreb', .10)]
 DEF_C = [('dws_pg', .45), ('reb', .20), ('teamdef', .20)]
@@ -184,6 +212,7 @@ def features(r, win_tsp_mean):
         'dws_pg': (num(r.get('dws')) / gp) if gp and num(r.get('dws')) is not None else None,
     }
     f['tov'] = num(r.get('tov'))
+    f['load'] = num(r.get('min'))  # minutes burden relative to era norms
     tsp = num(r.get('tsp'))
     f['eff'] = (tsp - win_tsp_mean) if (tsp is not None and win_tsp_mean) else None
     f['voleff'] = (f['pts'] * tsp / win_tsp_mean) if (
@@ -240,7 +269,7 @@ def build_params(rows, stype, roles):
         vals = [num(r.get('tsp')) for yy in range(a, b + 1)
                 for r in by_year.get(yy, []) if num(r.get('tsp'))]
         tsp_mean[y] = st.mean(vals) if vals else None
-    stats = ['pts', 'ast', 'reb', 'stl', 'blk', 'dreb', 'dbpm', 'dws_pg', 'eff', 'voleff', 'oimp', 'tov']
+    stats = ['pts', 'ast', 'reb', 'stl', 'blk', 'dreb', 'dbpm', 'dws_pg', 'eff', 'voleff', 'oimp', 'tov', 'load']
     feats_by_year = {y: [(features(r, tsp_mean[y]), roles[id(r)]) for r in by_year[y]]
                      for y in years}
     for y in years:
@@ -257,7 +286,7 @@ def build_params(rows, stype, roles):
     return params, tsp_mean
 
 
-Z_CAP = 4.0  # winsorize: beyond 4 sigma, separation from a thin pool is
+Z_CAP = 4.5  # winsorize: beyond ~4.5 sigma, separation from a thin pool is
              # noise, not signal. Modern qualified pools (~350 players) never
              # exceed it; 1940s-50s pools (~70-90) produce 6-7 sigma box
              # outliers that would otherwise dominate the all-time boards.
@@ -271,7 +300,7 @@ def z(f, s, p, role):
     return max(-Z_CAP, min(Z_CAP, (f[s] - m) / sd))
 
 
-OFF_COMPS = ['pts', 'eff', 'voleff', 'ast', 'tov', 'oimp']
+OFF_COMPS = ['pts', 'eff', 'voleff', 'ast', 'tov', 'oimp', 'load']
 
 
 def off_component_z(r, p, tsp_mean, role):
@@ -294,7 +323,7 @@ def raw_scores(r, p, tsp_mean, role):
         dfn = sum(w * z_direct(f, s, p, role) for s, w in DEF_C)
     else:
         dfn = sum(w * z_direct(f, s, p, role) for s, w in DEF_D)
-    return off, dfn
+    return off, dfn * ROLE_DEF_IMPACT.get(role, 1.0)
 
 
 def z_direct(f, s, p, role):
@@ -549,9 +578,15 @@ def main():
     if args.lam == 'auto':
         star = [r for r in rows if r['type'] == 'RS' and r['name'] == CONSTRAINT_STAR and is_qual(r)]
         olds = [r for r in rows if r['type'] == 'RS' and r['name'] in CONSTRAINT_OLD and is_qual(r)]
+        rs_all = [r for r in rows if r['type'] == 'RS' and is_qual(r)]
+        pre60 = [r for r in rs_all if r['year'] < 1960]
         lam = 0.0
         while lam <= 2.0:
-            if max(adj_total(r, lam) for r in star) >= max(adj_total(r, lam) for r in olds):
+            ok1 = max(adj_total(r, lam) for r in star) >= max(adj_total(r, lam) for r in olds)
+            # no pre-1960 season inside the all-time top 5
+            top5 = sorted((adj_total(r, lam) for r in rs_all), reverse=True)[4]
+            ok2 = max(adj_total(r, lam) for r in pre60) < top5
+            if ok1 and ok2:
                 break
             lam += 0.01
         lam = round(lam, 2)
@@ -589,7 +624,7 @@ def main():
     # ---------------- report ----------------
     lines = []
     w = lines.append
-    w('# REIGN 2.4 — full computation report\n')
+    w('# REIGN 2.5 — full computation report\n')
     w('Rolling 5-year windows · role-relative defense · cross-tier variance '
       'normalization · pre-2001 stl/blk scorekeeper-reliability shrinkage · '
       'team-calibrated OFF weights · z winsorized at ±4 · '
@@ -616,13 +651,20 @@ def main():
       ' · '.join(f"{y}: −{lam * depth_gap(y) * b:.1f}"
                  for y in (1950, 1960, 1970, 1985, 2000, 2015)) + '\n')
 
+    def best_per_player(rows_, key):
+        best = {}
+        for r in rows_:
+            if r['name'] not in best or r[key] > best[r['name']][key]:
+                best[r['name']] = r
+        return sorted(best.values(), key=lambda r: -r[key])
+
     for era, (y0, y1) in ERA_OF.items():
-        w(f'\n## {era} ({y0}–{y1}) — top 10 peak seasons\n')
+        w(f'\n## {era} ({y0}–{y1}) — top 10 players (best season each)\n')
         er = [r for r in qual if y0 <= r['year'] <= y1]
-        w('| # | REIGN 2.4 | v2 (OFF/DEF) | v1 | | v1 top 10 | v1 |')
+        w('| # | REIGN 2.5 | v2 (OFF/DEF) | v1 | | v1 top 10 | v1 |')
         w('|---|---|---|---|---|---|---|')
-        t2 = sorted(er, key=lambda r: -r['v2'])[:10]
-        t1 = sorted(er, key=lambda r: -r['v1'])[:10]
+        t2 = best_per_player(er, 'v2')[:10]
+        t1 = best_per_player(er, 'v1')[:10]
         for i in range(10):
             l2 = (f"{t2[i]['name']} '{str(t2[i]['year'] + 1)[2:]} | "
                   f"**{t2[i]['v2']:+.1f}** ({t2[i]['v2_off']:+.1f}/{t2[i]['v2_def']:+.1f}) | "
@@ -631,7 +673,7 @@ def main():
                   f"{t1[i]['v1']:+.1f}") if i < len(t1) else ' | '
             w(f'| {i + 1} | {l2} | | {l1} |')
 
-    w('\n## All-time top 20 peak seasons (REIGN 2.4, regular season)\n')
+    w('\n## All-time top 20 peak seasons (REIGN 2.5, regular season)\n')
     w('| # | player | season | v2 | OFF | DEF | v1 |')
     w('|---|---|---|---|---|---|---|')
     for i, r in enumerate(sorted(qual, key=lambda r: -r['v2'])[:20], 1):
@@ -646,7 +688,7 @@ def main():
         if r['type'] == 'PO':
             po_rows_by[(r['name'], r['year'])] = num(r.get('gp')) or 0
     po_qual = [r for r in po_qual if po_rows_by.get((r['name'], r['year']), 0) >= 8]
-    w('\n## All-time top 15 playoff runs (REIGN 2.4, ≥8 games)\n')
+    w('\n## All-time top 15 playoff runs (REIGN 2.5, ≥8 games)\n')
     w('*Playoff scores are standardized against the playoff field — a far '
       'stronger population than the regular season — so +20 in the playoffs '
       'is rarer than +20 in the regular season.*\n')
