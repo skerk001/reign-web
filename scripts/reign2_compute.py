@@ -51,6 +51,32 @@ wrong"):
         v2.2 value stacked three shrinkages on 1980s guards); Z_CAP 4.5;
         lambda-auto constraint extended: no pre-1960 season in the all-time
         top 5. Era boards report best-season-per-player.
+  * v2.6 (maintainer review: "stop penalizing pre-90s players so much --
+    they don't crack the +22 MVP threshold they should; review role
+    players"):
+      - OREB added to OFF (role-relative, .075) -- Moses Malone's MVP
+        seasons were invisible without second-chance credit.
+      - POOL-SIZE-AWARE WINSORIZE CAP: the z cap is sqrt(2 ln n) + 1 for a
+        per-year qualified pool of n (expected max of n normals plus a
+        margin), so a ~90-player 1950s league caps near 4.0 while modern
+        leagues keep 4.5. Thin-pool outliers are contained at the source.
+      - PARTIAL TAIL EQUALIZATION: older leagues have thinner score
+        top-tails (fewer qualified players -> lower expected extremes),
+        which structurally capped their best seasons ~2 points below
+        modern peers even after windowed z-scores. Each year is rescaled
+        toward the pooled 1996+ qualified p99 at HALF strength (square
+        root), clamped to [0.9, 1.2] -- genuine differences in star depth
+        survive, the mechanical tail deficit does not. Pre-shot-clock
+        years (< 1954-55) instead get a small DISCOUNT (factor capped at
+        0.92): stalling tactics and one-man offenses inflated pre-clock
+        separation in ways the 24-second game never allowed again.
+      - NEGATIVE-TAIL COMPRESSION: sub-zero OFF/DEF scaled by 0.55 after
+        the affine -- v2's richer composites spread the bottom tail far
+        wider than v1's floor (-12 vs -3); low-minutes bad seasons are
+        real but not that informative.
+      - Net effect: lambda auto-solves to ~0 -- the cap + tail machinery
+        now contains what the era dock previously had to, so no whole
+        decade is docked to control one outlier.
   * ERA-STRENGTH PRIOR: within-league z-scores measure separation from
     peers, which conflates dominance with league depth -- a 6-sigma outlier
     in a 10-team, pre-integration league is cheap. An empirical chained
@@ -105,7 +131,7 @@ POOL = {1946: .14, 1950: .17, 1955: .22, 1960: .32, 1965: .45, 1970: .58,
         1975: .68, 1980: .76, 1985: .84, 1990: .92, 1995: 1.00, 2000: 1.06,
         2005: 1.12, 2010: 1.17, 2015: 1.21, 2020: 1.24, 2026: 1.26}
 
-ROLE_STATS = {'reb', 'dreb', 'stl', 'blk'}  # standardized within guard/wing/big
+ROLE_STATS = {'reb', 'dreb', 'oreb', 'stl', 'blk'}  # standardized within guard/wing/big
 
 # Role defensive-impact multiplier (v2.5). Role-relative z restores fairness
 # WITHIN roles but flattens the between-role reality that rim protection
@@ -148,8 +174,12 @@ def reliability(year):
 # production over a 40-minute burden is more valuable than over 34, and the
 # within-window z makes it era-fair (each season is compared to its own
 # league's minute norms, so high-minute eras don't leak an advantage).
-OFF_W = [('voleff', .40), ('oimp', .30), ('ast', .15), ('load', .10),
-         ('eff', .05), ('tov', -.10)]
+# v2.6: OREB added (role-relative) -- second-chance possessions are offense,
+# and their greatest practitioners (Moses Malone's MVP years) were invisible
+# without it. eff dropped as a standalone (already embedded in voleff; the
+# calibration gave it near-zero independent weight).
+OFF_W = [('voleff', .40), ('oimp', .30), ('ast', .15), ('load', .075),
+         ('oreb', .075), ('tov', -.10)]
 DEF_AB = [('dbpm', .25), ('dws_pg', .20), ('teamdef', .15),
           ('stl', .15), ('blk', .15), ('dreb', .10)]
 DEF_C = [('dws_pg', .45), ('reb', .20), ('teamdef', .20)]
@@ -208,6 +238,7 @@ def features(r, win_tsp_mean):
     f = {
         'pts': num(r.get('pts')), 'ast': num(r.get('ast')), 'reb': num(r.get('reb')),
         'stl': num(r.get('stl')), 'blk': num(r.get('blk')), 'dreb': num(r.get('dreb')),
+        'oreb': num(r.get('oreb')),
         'dbpm': num(r.get('dbpm')),
         'dws_pg': (num(r.get('dws')) / gp) if gp and num(r.get('dws')) is not None else None,
     }
@@ -269,13 +300,13 @@ def build_params(rows, stype, roles):
         vals = [num(r.get('tsp')) for yy in range(a, b + 1)
                 for r in by_year.get(yy, []) if num(r.get('tsp'))]
         tsp_mean[y] = st.mean(vals) if vals else None
-    stats = ['pts', 'ast', 'reb', 'stl', 'blk', 'dreb', 'dbpm', 'dws_pg', 'eff', 'voleff', 'oimp', 'tov', 'load']
+    stats = ['pts', 'ast', 'reb', 'stl', 'blk', 'dreb', 'dbpm', 'dws_pg', 'eff', 'voleff', 'oimp', 'tov', 'load', 'oreb']
     feats_by_year = {y: [(features(r, tsp_mean[y]), roles[id(r)]) for r in by_year[y]]
                      for y in years}
     for y in years:
         a, b = window_years(y, years)
-        params[y] = {}
         pool = [fr for yy in range(a, b + 1) for fr in feats_by_year.get(yy, [])]
+        params[y] = {'_cap': pool_cap(len(pool) / max(1, b - a + 1))}
         for s in stats:
             keys = [(s, role) for role in ('guard', 'wing', 'big')] if s in ROLE_STATS else [s]
             for key in keys:
@@ -286,10 +317,17 @@ def build_params(rows, stype, roles):
     return params, tsp_mean
 
 
-Z_CAP = 4.5  # winsorize: beyond ~4.5 sigma, separation from a thin pool is
-             # noise, not signal. Modern qualified pools (~350 players) never
-             # exceed it; 1940s-50s pools (~70-90) produce 6-7 sigma box
-             # outliers that would otherwise dominate the all-time boards.
+Z_CAP = 4.5  # hard ceiling; the effective cap is pool-size aware (below)
+
+
+def pool_cap(n):
+    """Winsorize cap from extreme-value theory: the expected maximum of n
+    standard normals is ~sqrt(2 ln n), so separation beyond that plus a
+    margin is thin-pool noise, not signal. A 1950 pool (~90 qualified) caps
+    near 4.0; a modern pool (~350+) near 4.4-4.5. This controls small-league
+    outliers AT THE SOURCE, so the era-strength dial no longer has to dock
+    entire decades to contain them."""
+    return max(3.6, min(Z_CAP, math.sqrt(2 * math.log(max(2, n))) + 1.0))
 
 
 def z(f, s, p, role):
@@ -297,7 +335,8 @@ def z(f, s, p, role):
     if key not in p or f.get(s) is None:
         return 0.0  # missing input = league average, never a penalty
     m, sd = p[key]
-    return max(-Z_CAP, min(Z_CAP, (f[s] - m) / sd))
+    cap = p.get('_cap', Z_CAP)
+    return max(-cap, min(cap, (f[s] - m) / sd))
 
 
 OFF_COMPS = ['pts', 'eff', 'voleff', 'ast', 'tov', 'oimp', 'load']
@@ -506,6 +545,8 @@ def main():
                     help='regress team DRtg on individual DEF box components and exit')
     ap.add_argument('--team-csv', default=None, metavar='TEAM_CSV',
                     help='Team Summaries.csv -- enables the team-defense DEF component')
+    ap.add_argument('--dump-csv', default=None, metavar='PATH',
+                    help='write name,year,type,min,v1,v2,v2_off,v2_def for every scored row')
     args = ap.parse_args()
 
     if args.calibrate_off:
@@ -570,6 +611,38 @@ def main():
             f = floors.get((role_of[id(r)], bucket_of(num(r.get('min')) or 0)), 0.0)
             scored[id(r)] = (o, max(d, f))
 
+    # --- partial tail equalization (era top-tail shape) ---------------------
+    # Older leagues have thinner score top-tails (fewer qualified players =>
+    # lower expected extremes; flatter star usage), which structurally caps
+    # their best seasons ~2 points below modern peers even after windowed
+    # z-scores. Rescale each year's scores toward a common qualified-p99 at
+    # HALF strength (square root), clamped, so genuine differences in star
+    # depth survive while the mechanical tail deficit does not. The era-
+    # strength dial below remains the sole cross-era value judgment.
+    yr_totals = defaultdict(list)
+    for r in rows:
+        if r['type'] == 'RS' and is_qual(r):
+            yr_totals[r['year']].append(sum(scored[id(r)]))
+    yrs = sorted(yr_totals)
+    ref_p99 = qtile([t for y in yrs if y >= 1996 for t in yr_totals[y]], .99)
+    tail_f = {}
+    for y in yrs:
+        a0, b0 = window_years(y, yrs)
+        w = sorted(t for yy in range(a0, b0 + 1) for t in yr_totals.get(yy, []))
+        p99 = qtile(w, .99)
+        f = max(0.9, min(1.2, math.sqrt(ref_p99 / p99))) if p99 and p99 > 0 else 1.0
+        # Discount rather than boost before the shot clock (1954-55): the
+        # top tail of pre-clock basketball is structurally inflated, not
+        # thin — stalling tactics and one-man offenses let a dominant big
+        # separate from a nascent regional league in ways the 24-second
+        # game never allowed again.
+        tail_f[y] = min(f, 0.92) if y < 1954 else f
+    for r in rows:
+        if id(r) in scored:
+            tf = tail_f.get(r['year'], 1.0)
+            o, d = scored[id(r)]
+            scored[id(r)] = (o * tf, d * tf)
+
     # --- era-strength prior -------------------------------------------------
     def adj_total(r, lam):
         o, d = scored[id(r)]
@@ -616,18 +689,31 @@ def main():
             continue
         o, d = scored[id(r)]
         r2o, r2d = a_off + b * o, a_def + b * d
+        if r2o < 0:
+            r2o *= 0.55
+        if r2d < 0:
+            r2d *= 0.55
         out.append({'name': r['name'], 'year': r['year'], 'type': r['type'],
                     'team': r.get('team'), 'era': r.get('era'), 'min': num(r.get('min')) or 0,
                     'v1': r['reign'], 'v2': round(r2o + r2d, 2),
                     'v2_off': round(r2o, 2), 'v2_def': round(r2d, 2)})
 
+    if args.dump_csv:
+        with open(args.dump_csv, 'w') as f:
+            f.write('name\tyear\ttype\tmin\tv1\tv2\tv2_off\tv2_def\n')
+            for r in out:
+                f.write(f"{r['name']}\t{r['year']}\t{r['type']}\t{r['min']}\t"
+                        f"{r['v1']}\t{r['v2']}\t{r['v2_off']}\t{r['v2_def']}\n")
+        print(f'dumped {len(out)} rows to {args.dump_csv}', file=sys.stderr)
+
     # ---------------- report ----------------
     lines = []
     w = lines.append
-    w('# REIGN 2.5 — full computation report\n')
+    w('# REIGN 2.6 — full computation report\n')
     w('Rolling 5-year windows · role-relative defense · cross-tier variance '
       'normalization · pre-2001 stl/blk scorekeeper-reliability shrinkage · '
-      'team-calibrated OFF weights · z winsorized at ±4 · '
+      'team-calibrated OFF weights · pool-size-aware z winsorizing · '
+      'half-strength tail equalization (pre-shot-clock years discounted) · '
       'declared talent-pool era-strength prior '
       f'(λ = {lam}, auto-solved so the best {CONSTRAINT_STAR} season is not '
       'below the best of Mikan/Wilt/Russell). No shipped data modified.\n')
@@ -661,7 +747,7 @@ def main():
     for era, (y0, y1) in ERA_OF.items():
         w(f'\n## {era} ({y0}–{y1}) — top 10 players (best season each)\n')
         er = [r for r in qual if y0 <= r['year'] <= y1]
-        w('| # | REIGN 2.5 | v2 (OFF/DEF) | v1 | | v1 top 10 | v1 |')
+        w('| # | REIGN 2.6 | v2 (OFF/DEF) | v1 | | v1 top 10 | v1 |')
         w('|---|---|---|---|---|---|---|')
         t2 = best_per_player(er, 'v2')[:10]
         t1 = best_per_player(er, 'v1')[:10]
@@ -673,7 +759,7 @@ def main():
                   f"{t1[i]['v1']:+.1f}") if i < len(t1) else ' | '
             w(f'| {i + 1} | {l2} | | {l1} |')
 
-    w('\n## All-time top 20 peak seasons (REIGN 2.5, regular season)\n')
+    w('\n## All-time top 20 peak seasons (REIGN 2.6, regular season)\n')
     w('| # | player | season | v2 | OFF | DEF | v1 |')
     w('|---|---|---|---|---|---|---|')
     for i, r in enumerate(sorted(qual, key=lambda r: -r['v2'])[:20], 1):
@@ -688,7 +774,7 @@ def main():
         if r['type'] == 'PO':
             po_rows_by[(r['name'], r['year'])] = num(r.get('gp')) or 0
     po_qual = [r for r in po_qual if po_rows_by.get((r['name'], r['year']), 0) >= 8]
-    w('\n## All-time top 15 playoff runs (REIGN 2.5, ≥8 games)\n')
+    w('\n## All-time top 15 playoff runs (REIGN 2.6, ≥8 games)\n')
     w('*Playoff scores are standardized against the playoff field — a far '
       'stronger population than the regular season — so +20 in the playoffs '
       'is rarer than +20 in the regular season.*\n')
